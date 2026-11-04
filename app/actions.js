@@ -8,8 +8,8 @@ import { db } from "@/lib/db";
 import { summarizePlace, aiEnabled } from "@/lib/gemini";
 import { splitLink, isMapLink, resolvePlaceLink, regionFromAddress } from "@/lib/placeLink";
 
-// 장소 입력은 가게 이름, 지도 링크, 또는 "이름 + 링크".
-// 링크는 미리보기 정보로 정확한 가게 이름과 지역을 알아낸다. 네이버 지도 링크는 이름이 안 읽혀서 같이 적은 이름을 쓴다.
+// 장소 입력은 장소 이름, 지도 링크, 또는 "이름 + 링크". (식당뿐 아니라 카페·보드게임카페 같은 놀거리도)
+// 링크는 미리보기 정보로 정확한 이름과 지역을 알아낸다. 네이버 지도 링크는 이름이 안 읽혀서 같이 적은 이름을 쓴다.
 async function placeFromInput(text, region) {
   const { name, url } = splitLink(text);
   const link = url && isMapLink(url) ? url : null;
@@ -18,7 +18,7 @@ async function placeFromInput(text, region) {
   if (found) return { label: found.name, region: region || regionFromAddress(found.address), map_url: found.url };
   return name ? { label: name, region: region || null, map_url: link } : null;
 }
-const LINK_HELP = "링크 앞에 가게 이름과 지점을 같이 적어 주세요. (예: 평화김해뒷고기 경성대점 https://naver.me/…)";
+const LINK_HELP = "링크 앞에 장소 이름과 지점을 같이 적어 주세요. (예: 평화김해뒷고기 경성대점 https://naver.me/…)";
 
 // 장소가 추가되면 응답을 먼저 보내고, AI 요약은 뒤에서 만든다. (10초 넘게 걸려서)
 const aiStatus = () => (aiEnabled() ? "pending" : "none");
@@ -75,7 +75,7 @@ export async function createMeeting(prevState, formData) {
   // 장소 링크는 모임을 만들기 전에 확인해서, 못 읽은 줄이 있으면 고쳐 달라고 한다.
   const placeRows = mode !== "date" ? await Promise.all(places.map((text) => placeFromInput(text))) : [];
   const badPlace = placeRows.findIndex((p) => !p);
-  if (badPlace >= 0) return { error: `장소 "${places[badPlace]}"에서 가게 이름을 읽지 못했어요. ${LINK_HELP}` };
+  if (badPlace >= 0) return { error: `장소 "${places[badPlace]}"에서 이름을 읽지 못했어요. ${LINK_HELP}` };
 
   const { data: meeting, error } = await db()
     .from("meetings")
@@ -168,12 +168,12 @@ export async function addCandidate(meetingId, prevState, formData) {
 
   const kind = formData.get("kind") === "place" ? "place" : "date";
   const input = String(formData.get("label") || "").trim();
-  if (!input) return { error: kind === "date" ? "날짜를 적어 주세요." : "가게 이름이나 지도 링크를 적어 주세요." };
+  if (!input) return { error: kind === "date" ? "날짜를 적어 주세요." : "장소 이름이나 지도 링크를 적어 주세요." };
 
   const row = { meeting_id: meetingId, kind, label: input, added_by: me.id };
   if (kind === "place") {
     const place = await placeFromInput(input, String(formData.get("region") || "").trim());
-    if (!place) return { error: `링크에서 가게 이름을 읽지 못했어요. ${LINK_HELP}` };
+    if (!place) return { error: `링크에서 장소 이름을 읽지 못했어요. ${LINK_HELP}` };
     const price = toInt(formData.get("price"));
     Object.assign(row, {
       ...place,

@@ -1,9 +1,16 @@
 import { mapLinks, priceRange, priceFromAi } from "@/lib/format";
 
+const KIND_ICON = { 식당: "🍚", 카페: "☕", 술집: "🍺", 놀거리: "🎲", 기타: "📍" };
+// "🎲 놀거리 (보드카페)"처럼 카카오 업종의 세부 분류를 같이 보여 준다.
+const kindText = (s) => {
+  const icon = KIND_ICON[s.kind] || "📍";
+  return `${icon} ${s.kind}${s.kindDetail && s.kindDetail !== s.kind ? ` (${s.kindDetail})` : ""}`;
+};
+
 function AiSummary({ place }) {
   const s = place.ai_summary;
   if (place.ai_status === "pending") {
-    return <p className="mt-1.5 rounded-lg bg-[#f7f7fe] px-2.5 py-2 text-xs text-sub">✨ AI가 가게 정보를 찾아 요약하는 중이에요…</p>;
+    return <p className="mt-1.5 rounded-lg bg-[#f7f7fe] px-2.5 py-2 text-xs text-sub">✨ AI가 장소 정보를 찾아 요약하는 중이에요…</p>;
   }
   if (place.ai_status === "failed") {
     return <p className="mt-1.5 rounded-lg bg-canvas px-2.5 py-2 text-xs text-sub">AI가 이 장소 정보를 찾지 못했어요. 지도 링크에서 확인해 주세요.</p>;
@@ -16,7 +23,10 @@ function AiSummary({ place }) {
 
   return (
     <div className="mt-1.5 rounded-lg bg-[#f7f7fe] px-2.5 py-2 text-xs leading-relaxed">
-      <p className="font-semibold text-brand-ink">✨ AI 요약</p>
+      <p className="font-semibold text-brand-ink">
+        ✨ AI 요약
+        {s.kind && <span className="ml-1 font-normal text-sub">· {kindText(s)}</span>}
+      </p>
       {s.oneLine && <p className="text-[13px] text-ink">{s.oneLine}</p>}
       {s.menus?.length > 0 && <p className="text-sub">대표 {s.menus.join(" · ")}</p>}
       {hours && <p className="text-sub">영업 {hours}</p>}
@@ -79,11 +89,13 @@ export default function PlaceInfo({ place, compact = false }) {
       {!compact && (
         <>
           {place.description && <p className="mt-1 text-sm">{place.description}</p>}
-          {price && (
+          {price ? (
             <p className="mt-0.5 text-xs text-sub">
               {price}
               {basis && ` (${basis})`}
             </p>
+          ) : (
+            place.ai_summary?.free && <p className="mt-0.5 text-xs text-sub">무료</p>
           )}
           <AiSummary place={place} />
         </>
