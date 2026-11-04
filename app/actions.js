@@ -5,12 +5,12 @@ import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { after } from "next/server";
 import { db } from "@/lib/db";
-import { summarizePlace } from "@/lib/gemini";
+import { summarizePlace, aiEnabled } from "@/lib/gemini";
 
 // 장소가 추가되면 응답을 먼저 보내고, AI 요약은 뒤에서 만든다. (10초 넘게 걸려서)
-const aiStatus = () => (process.env.GEMINI_API_KEY ? "pending" : "none");
+const aiStatus = () => (aiEnabled() ? "pending" : "none");
 function summarizeLater(ids) {
-  if (!process.env.GEMINI_API_KEY || !ids.length) return;
+  if (!aiEnabled() || !ids.length) return;
   after(async () => {
     for (const id of ids) await summarizePlace(id);
   });
