@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createMeeting } from "@/app/actions";
 import ListInput from "./ListInput";
+import { DateList } from "./DateInputs";
 
 const input = "w-full rounded-xl border border-line bg-white px-3 py-2.5 text-[15px] outline-none focus:border-brand";
 const label = "mb-1.5 block text-sm font-semibold";
@@ -70,7 +71,7 @@ export default function CreateForm() {
       {mode !== "place" && (
         <div>
           <span className={label}>날짜 후보 (선택)</span>
-          <ListInput name="dates" placeholders={["11/8 (토) 저녁", "11/9 (일) 점심", "날짜와 시간대"]} initial={2} addLabel="날짜 추가" />
+          <DateList name="dates" />
         </div>
       )}
 

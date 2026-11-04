@@ -78,7 +78,7 @@ export async function createMeeting(prevState, formData) {
   const mode = String(formData.get("mode") || "both");
   const deadlineLocal = String(formData.get("deadline") || "");
   const names = [...new Set(list(formData, "names"))];
-  const dates = list(formData, "dates");
+  const dates = [...new Set(list(formData, "dates"))];
   const places = list(formData, "places");
 
   if (!title) return { error: "모임 이름을 적어 주세요." };
@@ -179,6 +179,20 @@ export async function forgetParticipant(meetingId) {
   refresh();
 }
 
+// 모임장: 명단에 사람 추가 (나중에 합류한 친구). 새 사람은 모든 후보에 "아직 답 안 함"으로 시작한다.
+export async function addParticipant(meetingId, prevState, formData) {
+  if (!(await isAdmin(meetingId))) return { error: "모임장만 할 수 있어요." };
+  const open = await openMeeting(meetingId);
+  if (open.error) return { error: open.error };
+  const name = String(formData.get("name") || "").trim().slice(0, 20);
+  if (!name) return { error: "이름을 적어 주세요." };
+  const { error } = await db().from("participants").insert({ meeting_id: meetingId, name });
+  // unique(meeting_id, name) 제약에 걸리면 이미 있는 이름
+  if (error) return { error: error.code === "23505" ? "이미 명단에 있는 이름이에요." : "추가하지 못했어요." };
+  refresh();
+  return { ok: true, name, at: new Date().toISOString() };
+}
+
 // 모임장: 이름 잠금 풀기 (번호를 잊었거나, 남이 먼저 내 이름을 골랐을 때). 그 이름의 응답도 지운다.
 export async function resetParticipant(meetingId, participantId) {
   if (!(await isAdmin(meetingId))) return { error: "모임장만 할 수 있어요." };
@@ -236,9 +250,13 @@ export async function addCandidate(meetingId, prevState, formData) {
 
   const kind = formData.get("kind") === "place" ? "place" : "date";
   const input = String(formData.get("label") || "").trim();
-  if (!input) return { error: kind === "date" ? "날짜를 적어 주세요." : "장소 이름이나 지도 링크를 적어 주세요." };
+  if (!input) return { error: kind === "date" ? "날짜를 골라 주세요." : "장소 이름이나 지도 링크를 적어 주세요." };
 
   const row = { meeting_id: meetingId, kind, label: input, added_by: me.id };
+  if (kind === "date") {
+    const { data: same } = await db().from("candidates").select("id").eq("meeting_id", meetingId).eq("kind", "date").eq("label", input).limit(1);
+    if (same?.length) return { error: "이미 있는 날짜 후보예요." };
+  }
   if (kind === "place") {
     const place = await placeFromInput(input, String(formData.get("region") || "").trim());
     if (!place) return { error: `링크에서 장소 이름을 읽지 못했어요. ${LINK_HELP}` };

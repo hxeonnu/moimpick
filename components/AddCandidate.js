@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { addCandidate } from "@/app/actions";
 import { useCopy, ManualCopy } from "./useCopy";
+import { DateField } from "./DateInputs";
 
 const input = "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-brand";
 
@@ -59,7 +60,7 @@ export default function AddCandidate({ meetingId, mode }) {
       <form ref={formRef} action={action} className="space-y-2">
         <input type="hidden" name="kind" value={kind} />
         {kind === "date" ? (
-          <input name="label" className={input} placeholder="예: 11/7 (금) 저녁" required />
+          <DateField key={state?.at || "first"} name="label" />
         ) : (
           <>
             <input name="label" className={input} placeholder="장소 이름 또는 카카오맵 링크 (필수)" required />
