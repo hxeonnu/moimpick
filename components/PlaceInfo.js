@@ -1,4 +1,4 @@
-import { mapLinks, priceRange } from "@/lib/format";
+import { mapLinks, priceRange, priceFromAi } from "@/lib/format";
 
 function AiSummary({ place }) {
   const s = place.ai_summary;
@@ -53,7 +53,7 @@ function AiSummary({ place }) {
 export default function PlaceInfo({ place, compact = false }) {
   const links = mapLinks(place);
   const price = priceRange(place);
-  const basis = place.ai_summary?.priceBasis;
+  const basis = priceFromAi(place) ? place.ai_summary.priceBasis : null;
 
   return (
     <div className="min-w-0 flex-1">
@@ -81,7 +81,8 @@ export default function PlaceInfo({ place, compact = false }) {
           {place.description && <p className="mt-1 text-sm">{place.description}</p>}
           {price && (
             <p className="mt-0.5 text-xs text-sub">
-              {price} {basis ? `(${basis})` : "(사이드·주류 제외)"}
+              {price}
+              {basis && ` (${basis})`}
             </p>
           )}
           <AiSummary place={place} />
