@@ -3,7 +3,18 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { db } from "@/lib/db";
+import { summarizePlace } from "@/lib/gemini";
+
+// 장소가 추가되면 응답을 먼저 보내고, AI 요약은 뒤에서 만든다. (10초 넘게 걸려서)
+const aiStatus = () => (process.env.GEMINI_API_KEY ? "pending" : "none");
+function summarizeLater(ids) {
+  if (!process.env.GEMINI_API_KEY || !ids.length) return;
+  after(async () => {
+    for (const id of ids) await summarizePlace(id);
+  });
+}
 
 // 로그인이 없으므로, 명단에서 고른 이름을 이 브라우저 쿠키에 기억해 둔다.
 const cookieName = (meetingId) => `mp_${meetingId}`;
@@ -59,9 +70,12 @@ export async function createMeeting(prevState, formData) {
 
   const initial = [
     ...(mode !== "place" ? dates.map((label) => ({ meeting_id: meeting.id, kind: "date", label })) : []),
-    ...(mode !== "date" ? places.map((label) => ({ meeting_id: meeting.id, kind: "place", label })) : []),
+    ...(mode !== "date" ? places.map((label) => ({ meeting_id: meeting.id, kind: "place", label, ai_status: aiStatus() })) : []),
   ];
-  if (initial.length) await db().from("candidates").insert(initial);
+  if (initial.length) {
+    const { data: inserted } = await db().from("candidates").insert(initial).select("id, kind");
+    summarizeLater((inserted || []).filter((c) => c.kind === "place").map((c) => c.id));
+  }
 
   redirect(`/m/${meeting.id}?new=1`);
 }
@@ -146,11 +160,13 @@ export async function addCandidate(meetingId, prevState, formData) {
       price_min: price,
       price_max: price,
       map_url: /^https?:\/\//.test(mapUrl) ? mapUrl : null,
+      ai_status: aiStatus(),
     });
   }
 
-  const { error } = await db().from("candidates").insert(row);
+  const { data: inserted, error } = await db().from("candidates").insert(row).select("id").single();
   if (error) return { error: "후보를 추가하지 못했어요." };
+  if (kind === "place") summarizeLater([inserted.id]);
 
   refresh();
   return { ok: true, label, kind, at: new Date().toISOString() };

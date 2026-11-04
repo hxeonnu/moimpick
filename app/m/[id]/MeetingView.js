@@ -35,6 +35,7 @@ export default async function MeetingView({ params, searchParams }) {
   const dateRanks = rankDates(candidates, participants, responses);
   const placeRanks = rankPlaces(candidates, participants, responses);
   const canSeeRanks = closed || Boolean(me?.voted_at);
+  const summarizing = candidates.some((c) => c.ai_status === "pending");
 
   // 내 기존 응답과, 내가 투표한 뒤에 새로 올라온 후보(NEW)
   const myAnswers = Object.fromEntries(
@@ -98,7 +99,11 @@ export default async function MeetingView({ params, searchParams }) {
           {!closed && <AutoRefresh seconds={5} />}
         </>
       ) : (
-        <p className="rounded-2xl bg-white p-4 text-center text-sm text-sub">🔒 투표하면 지금 순위를 볼 수 있어요</p>
+        <>
+          <p className="rounded-2xl bg-white p-4 text-center text-sm text-sub">🔒 투표하면 지금 순위를 볼 수 있어요</p>
+          {/* AI 요약이 만들어지는 중이면 투표 전이라도 화면을 새로 받아서 요약이 뜨게 한다. */}
+          {summarizing && <AutoRefresh seconds={4} />}
+        </>
       )}
     </div>
   );

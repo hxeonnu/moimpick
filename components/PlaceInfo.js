@@ -1,10 +1,55 @@
 import { mapLinks, priceRange } from "@/lib/format";
 
+function AiSummary({ place }) {
+  const s = place.ai_summary;
+  if (place.ai_status === "pending") {
+    return <p className="mt-1.5 rounded-lg bg-[#f7f7fe] px-2.5 py-2 text-xs text-sub">✨ AI가 가게 정보를 찾아 요약하는 중이에요…</p>;
+  }
+  if (place.ai_status === "failed") {
+    return <p className="mt-1.5 rounded-lg bg-canvas px-2.5 py-2 text-xs text-sub">AI가 이 장소 정보를 찾지 못했어요. 지도 링크에서 확인해 주세요.</p>;
+  }
+  if (place.ai_status !== "done" || !s) return null;
+
+  const hours = [s.hours, s.breakTime && s.breakTime !== "없음" ? `브레이크 ${s.breakTime}` : null, s.closedDays].filter(Boolean).join(" · ");
+  const sources = place.ai_sources?.sources || [];
+  const suggestions = place.ai_sources?.suggestions;
+
+  return (
+    <div className="mt-1.5 rounded-lg bg-[#f7f7fe] px-2.5 py-2 text-xs leading-relaxed">
+      <p className="font-semibold text-brand-ink">✨ AI 요약</p>
+      {s.oneLine && <p className="text-[13px] text-ink">{s.oneLine}</p>}
+      {s.menus?.length > 0 && <p className="text-sub">대표 {s.menus.join(" · ")}</p>}
+      {hours && <p className="text-sub">영업 {hours}</p>}
+      {s.branchUnsure && <p className="text-amber-700">같은 이름의 다른 지점 정보가 섞였을 수 있어요.</p>}
+      <p className="mt-1 text-[11px] text-sub">ⓘ 가격·영업시간이 최신이 아닐 수 있어요. 링크에서 확인해 주세요.</p>
+      <details className="mt-1">
+        <summary className="cursor-pointer text-[11px] text-sub">자세히</summary>
+        <div className="mt-1 space-y-1 text-sub">
+          {s.address && <p>주소 {s.address}</p>}
+          {s.review && <p>후기 {s.review}</p>}
+          {sources.length > 0 && (
+            <p>
+              출처{" "}
+              {sources.map((src, i) => (
+                <a key={i} href={src.uri} target="_blank" rel="noreferrer" className="mr-1 underline">
+                  {src.title}
+                </a>
+              ))}
+            </p>
+          )}
+          {/* 구글 검색 기능(Grounding)을 쓰면 검색 제안을 꼭 보여 줘야 한다. */}
+          {suggestions && <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: suggestions }} />}
+        </div>
+      </details>
+    </div>
+  );
+}
+
 // 장소 후보의 이름·설명·가격·지도 링크. 투표 화면과 결과 화면이 같이 쓴다.
 export default function PlaceInfo({ place, compact = false }) {
   const links = mapLinks(place);
   const price = priceRange(place);
-  const summary = place.ai_summary;
+  const basis = place.ai_summary?.priceBasis;
 
   return (
     <div className="min-w-0 flex-1">
@@ -29,13 +74,13 @@ export default function PlaceInfo({ place, compact = false }) {
       </div>
       {!compact && (
         <>
-          {summary?.oneLine && (
-            <p className="mt-1.5 rounded-lg bg-[#f7f7fe] px-2.5 py-2 text-xs leading-relaxed">
-              <span className="font-semibold text-brand-ink">✨ AI 요약</span> {summary.oneLine}
+          {place.description && <p className="mt-1 text-sm">{place.description}</p>}
+          {price && (
+            <p className="mt-0.5 text-xs text-sub">
+              {price} {basis ? `(${basis})` : "(사이드·주류 제외)"}
             </p>
           )}
-          {place.description && <p className="mt-1 text-sm">{place.description}</p>}
-          {price && <p className="mt-0.5 text-xs text-sub">{price} (사이드·주류 제외)</p>}
+          <AiSummary place={place} />
         </>
       )}
     </div>
