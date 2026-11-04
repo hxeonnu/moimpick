@@ -1,18 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useCopy, ManualCopy } from "./useCopy";
 
 export default function Participation({ meetingId, participants, closed }) {
-  const [copied, setCopied] = useState(false);
+  const { copy, copied, manual, close } = useCopy();
   const done = participants.filter((p) => p.voted_at);
   const waiting = participants.filter((p) => !p.voted_at);
   const rate = participants.length ? Math.round((done.length / participants.length) * 100) : 0;
 
-  async function remind() {
+  function remind() {
     const url = `${window.location.origin}/m/${meetingId}`;
-    await navigator.clipboard.writeText(`${waiting.map((p) => p.name).join(", ")} 투표 부탁해요! 👉 ${url}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    copy(`${waiting.map((p) => p.name).join(", ")} 투표 부탁해요! 👉 ${url}`);
   }
 
   return (
@@ -44,6 +42,7 @@ export default function Participation({ meetingId, participants, closed }) {
           {copied ? "복사됨" : "📋 안 한 사람에게 알림 문구 복사"}
         </button>
       )}
+      <ManualCopy text={manual} onClose={close} />
     </section>
   );
 }

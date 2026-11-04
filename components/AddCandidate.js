@@ -2,13 +2,14 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { addCandidate } from "@/app/actions";
+import { useCopy, ManualCopy } from "./useCopy";
 
 const input = "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-brand";
 
 export default function AddCandidate({ meetingId, mode }) {
   const [kind, setKind] = useState(mode === "place" ? "place" : "date");
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const { copy, copied, manual, close } = useCopy();
   const [state, action, pending] = useActionState(addCandidate.bind(null, meetingId), null);
   const formRef = useRef(null);
 
@@ -17,11 +18,9 @@ export default function AddCandidate({ meetingId, mode }) {
   }, [state]);
 
   // 이미 투표한 친구들은 링크를 다시 안 열기 때문에, 단톡방에 붙일 문구를 바로 복사할 수 있게 한다.
-  async function copyNotice() {
+  function copyNotice() {
     const url = `${window.location.origin}/m/${meetingId}`;
-    await navigator.clipboard.writeText(`${state.label}도 후보로 추가했어! 다시 체크 부탁해 👉 ${url}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    copy(`${state.label}도 후보로 추가했어! 다시 체크 부탁해 👉 ${url}`);
   }
 
   if (!open) {
@@ -89,6 +88,7 @@ export default function AddCandidate({ meetingId, mode }) {
           <button onClick={copyNotice} className="mt-2 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white">
             {copied ? "복사됨" : "단톡방 알림 문구 복사"}
           </button>
+          <ManualCopy text={manual} onClose={close} />
         </div>
       )}
     </section>

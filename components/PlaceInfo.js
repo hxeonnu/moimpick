@@ -73,11 +73,6 @@ export default function PlaceInfo({ place, compact = false }) {
           {place.region && <span className="ml-1 text-xs font-normal text-sub">{place.region}</span>}
         </p>
         <span className="flex shrink-0 gap-1 text-[11px]">
-          {links.custom && (
-            <a href={links.custom} target="_blank" rel="noreferrer" className="rounded bg-canvas px-1.5 py-0.5 text-sub">
-              지도
-            </a>
-          )}
           <a href={links.kakao} target="_blank" rel="noreferrer" className="rounded bg-canvas px-1.5 py-0.5 text-sub">
             카카오맵
           </a>
