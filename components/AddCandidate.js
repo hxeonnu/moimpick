@@ -63,11 +63,10 @@ export default function AddCandidate({ meetingId, mode }) {
           <input name="label" className={input} placeholder="예: 11/7 (금) 저녁" required />
         ) : (
           <>
-            <input name="label" className={input} placeholder="장소 이름 또는 지도 링크 (필수)" required />
+            <input name="label" className={input} placeholder="장소 이름 또는 카카오맵 링크 (필수)" required />
             <p className="text-xs text-sub">
-              식당, 카페, 보드게임카페처럼 놀 곳도 돼요. 이름만 적을 땐 지점이나 대략적인 위치도 같이 적어 주세요.
-              (예: 금수돼지국밥 경성대점, 레드버튼 경성대점) 카카오맵 링크는 그대로 붙여 넣으면 되고, 네이버 지도 링크는 앞에 장소
-              이름을 같이 적어 주세요.
+              카카오맵 링크가 가장 정확해요. 이름만 적을 땐 지점까지 적어 주세요. (예: 레드버튼 경성대점) 네이버 지도 링크는
+              이름과 같이 붙여 주세요.
             </p>
             <div className="grid grid-cols-2 gap-2">
               <input name="region" className={input} placeholder="위치 (예: 경성대)" />
