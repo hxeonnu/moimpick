@@ -40,6 +40,18 @@ function AiSummary({ place }) {
   );
 }
 
+// 지도 버튼 아이콘: 서비스 색(카카오 노랑, 네이버 초록) 바탕에 지도 핀. 공식 로고는 쓰지 않고 색으로만 구분한다.
+const mapButton = "flex items-center gap-1 rounded bg-canvas px-1.5 py-0.5 text-sub";
+function MapIcon({ bg, pin }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+      <rect width="14" height="14" rx="3.5" fill={bg} />
+      <path d="M7 11.6s-3.3-3.2-3.3-5.5a3.3 3.3 0 0 1 6.6 0c0 2.3-3.3 5.5-3.3 5.5Z" fill={pin} />
+      <circle cx="7" cy="6.1" r="1.2" fill={bg} />
+    </svg>
+  );
+}
+
 // 장소 후보의 이름·설명·가격·지도 링크. 투표 화면과 결과 화면이 같이 쓴다.
 export default function PlaceInfo({ place, compact = false }) {
   const links = mapLinks(place);
@@ -48,19 +60,20 @@ export default function PlaceInfo({ place, compact = false }) {
 
   return (
     <div className="min-w-0 flex-1">
-      <div className="flex items-start justify-between gap-2">
-        <p className="font-semibold">
-          {place.label}
-          {place.region && <span className="ml-1 text-xs font-normal text-sub">{place.region}</span>}
-        </p>
-        <span className="flex shrink-0 gap-1 text-[11px]">
-          <a href={links.kakao} target="_blank" rel="noreferrer" className="rounded bg-canvas px-1.5 py-0.5 text-sub">
-            카카오맵
-          </a>
-          <a href={links.naver} target="_blank" rel="noreferrer" className="rounded bg-canvas px-1.5 py-0.5 text-sub">
-            네이버
-          </a>
-        </span>
+      <p className="font-semibold">
+        {place.label}
+        {place.region && <span className="ml-1 text-xs font-normal text-sub">{place.region}</span>}
+      </p>
+      {/* 휴대폰에서 이름이 좁아지지 않게 지도 버튼은 이름 아래 줄에 둔다. */}
+      <div className="mt-1 flex gap-1 text-[11px]">
+        <a href={links.kakao} target="_blank" rel="noreferrer" className={mapButton}>
+          <MapIcon bg="#FEE500" pin="#3C1E1E" />
+          카카오맵
+        </a>
+        <a href={links.naver} target="_blank" rel="noreferrer" className={mapButton}>
+          <MapIcon bg="#03C75A" pin="#fff" />
+          네이버지도
+        </a>
       </div>
       {!compact && (
         <>
