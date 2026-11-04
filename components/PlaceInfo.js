@@ -26,7 +26,6 @@ function AiSummary({ place }) {
         {s.kind && <span className="ml-1 font-normal text-sub">· {kindText(s)}</span>}
       </p>
       {s.oneLine && <p className="text-[13px] text-ink">{s.oneLine}</p>}
-      {s.menus?.length > 0 && <p className="text-sub">대표 {s.menus.join(" · ")}</p>}
       {hours && <p className="text-sub">영업 {hours}</p>}
       {s.branchUnsure && <p className="text-amber-700">같은 이름의 다른 지점 정보가 섞였을 수 있어요.</p>}
       <p className="mt-1 text-[11px] text-sub">ⓘ 가격·영업시간이 최신이 아닐 수 있어요. 링크에서 확인해 주세요.</p>
