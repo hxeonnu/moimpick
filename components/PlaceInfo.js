@@ -18,8 +18,6 @@ function AiSummary({ place }) {
   if (place.ai_status !== "done" || !s) return null;
 
   const hours = [s.hours, s.breakTime && s.breakTime !== "없음" ? `브레이크 ${s.breakTime}` : null, s.closedDays].filter(Boolean).join(" · ");
-  const sources = place.ai_sources?.sources || [];
-  const suggestions = place.ai_sources?.suggestions;
 
   return (
     <div className="mt-1.5 rounded-lg bg-[#f7f7fe] px-2.5 py-2 text-xs leading-relaxed">
@@ -37,22 +35,6 @@ function AiSummary({ place }) {
         <div className="mt-1 space-y-1 text-sub">
           {s.address && <p>주소 {s.address}</p>}
           {s.review && <p>후기 {s.review}</p>}
-          {sources.length > 0 && (
-            <div>
-              <p>출처</p>
-              <ul className="ml-3 list-disc">
-                {sources.map((src, i) => (
-                  <li key={i}>
-                    <a href={src.uri} target="_blank" rel="noreferrer" className="underline">
-                      {src.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {/* 구글 검색 기능(Grounding)을 쓰면 검색 제안을 꼭 보여 줘야 한다. */}
-          {suggestions && <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: suggestions }} />}
         </div>
       </details>
     </div>
