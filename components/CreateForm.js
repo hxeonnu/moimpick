@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createMeeting } from "@/app/actions";
+import ListInput from "./ListInput";
 
 const input = "w-full rounded-xl border border-line bg-white px-3 py-2.5 text-[15px] outline-none focus:border-brand";
 const label = "mb-1.5 block text-sm font-semibold";
@@ -9,12 +10,23 @@ const label = "mb-1.5 block text-sm font-semibold";
 export default function CreateForm() {
   const [state, action, pending] = useActionState(createMeeting, null);
   const [mode, setMode] = useState("both");
+  // 제출하면 React가 폼을 비우는데, 오류가 나도 적은 내용이 남도록 값을 직접 들고 있는다.
+  const [title, setTitle] = useState("");
+  const [deadline, setDeadline] = useState("");
 
   return (
     <form action={action} className="space-y-5 rounded-2xl bg-white p-5">
       <div>
         <label className={label} htmlFor="title">모임 이름</label>
-        <input id="title" name="title" className={input} placeholder="종강 모임 약속 잡기" required />
+        <input
+          id="title"
+          name="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className={input}
+          placeholder="종강 모임 약속 잡기"
+          required
+        />
       </div>
 
       <div>
@@ -38,29 +50,42 @@ export default function CreateForm() {
 
       <div>
         <label className={label} htmlFor="deadline">투표 마감 시간</label>
-        <input id="deadline" name="deadline" type="datetime-local" className={input} required />
+        <input
+          id="deadline"
+          name="deadline"
+          type="datetime-local"
+          value={deadline}
+          onChange={(e) => setDeadline(e.target.value)}
+          className={input}
+          required
+        />
       </div>
 
       <div>
-        <label className={label} htmlFor="names">참여자 명단</label>
-        <textarea id="names" name="names" rows={4} className={input} placeholder={"민수\n지영\n현우"} required />
-        <p className="mt-1 text-xs text-sub">한 줄에 한 명씩. 투표할 때 여기서 자기 이름을 골라요.</p>
+        <span className={label}>참여자 명단</span>
+        <ListInput name="names" placeholders={["민수", "지영", "현우", "이름"]} initial={3} min={2} required addLabel="한 명 더" />
+        <p className="mt-1 text-xs text-sub">칸 하나에 한 명씩. 투표할 때 여기서 자기 이름을 골라요.</p>
       </div>
 
       {mode !== "place" && (
         <div>
-          <label className={label} htmlFor="dates">날짜 후보 (선택)</label>
-          <textarea id="dates" name="dates" rows={3} className={input} placeholder={"11/8 (토) 저녁\n11/9 (일) 점심"} />
+          <span className={label}>날짜 후보 (선택)</span>
+          <ListInput name="dates" placeholders={["11/8 (토) 저녁", "11/9 (일) 점심", "날짜와 시간대"]} initial={2} addLabel="날짜 추가" />
         </div>
       )}
 
       {mode !== "date" && (
         <div>
-          <label className={label} htmlFor="places">장소 후보 (선택)</label>
-          <textarea id="places" name="places" rows={3} className={input} placeholder={"금수돼지국밥 경성부경대점\n레드버튼 경성대점\nhttps://place.map.kakao.com/…"} />
+          <span className={label}>장소 후보 (선택)</span>
+          <ListInput
+            name="places"
+            placeholders={["장소 이름 또는 카카오맵 링크"]}
+            initial={2}
+            addLabel="장소 추가"
+          />
           <p className="mt-1 text-xs text-sub">
-            한 줄에 하나씩 적어 주세요. 카카오맵 링크가 가장 정확하고, 이름만 적을 땐 지점까지 적어 주세요. 네이버 지도
-            링크는 이름과 같이 붙여 주세요.
+            칸 하나에 한 곳씩. 카카오맵 링크가 가장 정확하고, 이름만 적을 땐 지점까지 적어 주세요. (예: 레드버튼 경성대점)
+            네이버 지도 링크는 한 칸에 이름과 같이 붙여 주세요.
           </p>
         </div>
       )}

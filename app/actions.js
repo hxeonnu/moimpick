@@ -36,6 +36,8 @@ const lines = (text) =>
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
+// 모임 만들기는 칸마다 같은 이름으로 보낸다. (한 칸에 여러 줄을 붙여 넣어도 나눠서 받는다)
+const list = (formData, key) => formData.getAll(key).flatMap(lines);
 const toInt = (v) => {
   const n = parseInt(String(v || "").replace(/[^0-9]/g, ""), 10);
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -61,9 +63,9 @@ export async function createMeeting(prevState, formData) {
   const title = String(formData.get("title") || "").trim();
   const mode = String(formData.get("mode") || "both");
   const deadlineLocal = String(formData.get("deadline") || "");
-  const names = [...new Set(lines(formData.get("names")))];
-  const dates = lines(formData.get("dates"));
-  const places = lines(formData.get("places"));
+  const names = [...new Set(list(formData, "names"))];
+  const dates = list(formData, "dates");
+  const places = list(formData, "places");
 
   if (!title) return { error: "모임 이름을 적어 주세요." };
   if (!deadlineLocal) return { error: "투표 마감 시간을 정해 주세요." };
