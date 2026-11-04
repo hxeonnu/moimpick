@@ -11,5 +11,7 @@ if (!url || !key) {
 const db = createClient(url, key, { auth: { persistSession: false } });
 for (const table of ["meetings", "participants", "candidates", "responses"]) {
   const { count, error } = await db.from(table).select("*", { count: "exact", head: true });
-  console.log(table.padEnd(13), error ? `오류: ${error.message}` : `연결됨 (${count}행)`);
+  if (error) console.log(table.padEnd(13), `오류: ${error.message}`);
+  else if (count === null) console.log(table.padEnd(13), "응답이 이상함: SUPABASE_URL 끝에 /rest/v1 같은 경로가 붙어 있지 않은지 확인");
+  else console.log(table.padEnd(13), `연결됨 (${count}행)`);
 }
