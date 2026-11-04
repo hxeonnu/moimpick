@@ -42,7 +42,7 @@ function AiSummary({ place }) {
 }
 
 // 지도 버튼: 각 지도 앱 아이콘을 붙인다. (public/icons)
-const mapButton = "flex items-center gap-1 rounded bg-canvas px-1.5 py-0.5 text-sub";
+const mapButton = "flex items-center gap-1 rounded-full bg-canvas py-0.5 pl-1 pr-2 text-sub";
 
 // 장소 후보의 이름·설명·가격·지도 링크. 투표 화면과 결과 화면이 같이 쓴다.
 export default function PlaceInfo({ place, compact = false }) {
@@ -59,11 +59,11 @@ export default function PlaceInfo({ place, compact = false }) {
       {/* 휴대폰에서 이름이 좁아지지 않게 지도 버튼은 이름 아래 줄에 둔다. */}
       <div className="mt-1 flex gap-1 text-[11px]">
         <a href={links.kakao} target="_blank" rel="noreferrer" className={mapButton}>
-          <Image src="/icons/kakao-map.png" alt="" width={14} height={14} />
+          <Image src="/icons/kakao-map.png" alt="" width={16} height={16} unoptimized />
           카카오맵
         </a>
         <a href={links.naver} target="_blank" rel="noreferrer" className={mapButton}>
-          <Image src="/icons/naver-map.png" alt="" width={14} height={14} />
+          <Image src="/icons/naver-map.png" alt="" width={16} height={16} unoptimized />
           네이버지도
         </a>
       </div>
