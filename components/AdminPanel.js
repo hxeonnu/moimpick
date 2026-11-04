@@ -1,0 +1,58 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { resetParticipant } from "@/app/actions";
+import { useCopy, ManualCopy } from "./useCopy";
+
+// 모임장에게만 보이는 메뉴. 모임장 링크 보관과 이름 잠금 풀기.
+export default function AdminPanel({ meetingId, adminToken, participants, closed }) {
+  const { copy, copied, manual, close } = useCopy();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState(null);
+  const claimed = participants.filter((p) => p.claimed);
+
+  function copyAdminLink() {
+    copy(`${window.location.origin}/m/${meetingId}/admin?t=${adminToken}`);
+  }
+
+  function reset(p) {
+    if (!window.confirm(`${p.name}의 이름 잠금을 풀까요? ${p.name}이(가) 한 투표도 함께 지워지고, 이름을 다시 고를 수 있게 돼요.`)) return;
+    start(async () => {
+      const res = await resetParticipant(meetingId, p.id);
+      setError(res?.error || null);
+    });
+  }
+
+  return (
+    <section className="rounded-2xl border border-dashed border-brand/40 bg-white p-4">
+      <h2 className="text-sm font-bold">👑 모임장 메뉴</h2>
+      <p className="mt-1 text-xs text-sub">
+        이 기기는 모임장으로 기억돼 있어요. 다른 폰에서도 관리하려면 모임장 링크를 보관해 두세요. (단톡방에는 올리지 마세요)
+      </p>
+      <button onClick={copyAdminLink} className="mt-2 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold">
+        {copied ? "복사됨" : "모임장 링크 복사"}
+      </button>
+      <ManualCopy text={manual} onClose={close} />
+
+      {!closed && claimed.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold">이름 잠금 풀기</p>
+          <p className="mt-0.5 text-xs text-sub">번호를 잊었거나, 다른 사람이 먼저 그 이름을 골랐을 때 써요.</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {claimed.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => reset(p)}
+                disabled={pending}
+                className="rounded-full border border-line px-2.5 py-1 text-xs disabled:opacity-60"
+              >
+                🔓 {p.name}
+              </button>
+            ))}
+          </div>
+          {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        </div>
+      )}
+    </section>
+  );
+}

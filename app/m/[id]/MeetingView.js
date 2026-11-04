@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { loadMeeting } from "@/lib/db";
+import { loadMeeting, loadMe } from "@/lib/db";
 import { rankDates, rankPlaces, noCommonDate } from "@/lib/ranking";
 import { formatDeadline, timeLeft } from "@/lib/format";
 import ShareBox from "@/components/ShareBox";
@@ -12,7 +12,8 @@ import Participation from "@/components/Participation";
 import Results from "@/components/Results";
 import FinalResult from "@/components/FinalResult";
 import AutoRefresh from "@/components/AutoRefresh";
-import { forgetParticipant } from "@/app/actions";
+import AdminPanel from "@/components/AdminPanel";
+import { PinNotice, LeaveButton } from "@/components/MyPin";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -26,8 +27,12 @@ export default async function MeetingView({ params, searchParams }) {
   if (!data) notFound();
   const { meeting, participants, candidates, responses } = data;
 
+  // 쿠키의 비밀 키로 나를 찾는다. 모임장은 모임장 쿠키가 모임의 admin_token과 같은지로 안다.
   const store = await cookies();
-  const me = participants.find((p) => p.id === store.get(`mp_${id}`)?.value) || null;
+  const me = await loadMe(id, store.get(`mp_${id}`)?.value);
+  const isAdmin = store.get(`mpa_${id}`)?.value === meeting.admin_token;
+  // 화면(클라이언트)에는 이름·투표 여부·잠김 여부만 보낸다. (예산은 순위 계산에만 서버에서 쓴다)
+  const people = participants.map(({ id, name, voted_at, claimed }) => ({ id, name, voted_at, claimed }));
 
   const now = new Date();
   const closed = new Date(meeting.deadline) <= now;
@@ -56,21 +61,20 @@ export default async function MeetingView({ params, searchParams }) {
           {me && !closed && (
             <>
               {" · "}
-              <strong className="text-ink">{me.name}</strong>로 투표 중{" "}
-              <form action={forgetParticipant.bind(null, id)} className="inline">
-                <button className="underline">다른 이름</button>
-              </form>
+              <strong className="text-ink">{me.name}</strong>(으)로 투표 중 · 내 번호 <strong className="text-ink">{me.pin}</strong>{" "}
+              <LeaveButton meetingId={id} pin={me.pin} />
             </>
           )}
         </div>
       </header>
 
       <ShareBox meetingId={id} title={meeting.title} highlight={sp?.new === "1"} />
+      {me && !closed && sp?.welcome === "1" && <PinNotice pin={me.pin} />}
 
       {closed ? (
         <FinalResult mode={meeting.mode} dateRanks={dateRanks} placeRanks={placeRanks} />
       ) : !me ? (
-        <NamePicker meetingId={id} participants={participants} />
+        <NamePicker meetingId={id} title={meeting.title} participants={people} />
       ) : (
         <>
           <VoteForm
@@ -85,7 +89,8 @@ export default async function MeetingView({ params, searchParams }) {
         </>
       )}
 
-      <Participation meetingId={id} participants={participants} closed={closed} />
+      <Participation meetingId={id} participants={people} closed={closed} />
+      {isAdmin && <AdminPanel meetingId={id} adminToken={meeting.admin_token} participants={people} closed={closed} />}
 
       {canSeeRanks ? (
         <>

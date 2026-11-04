@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes, randomInt } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
@@ -29,8 +30,13 @@ function summarizeLater(ids) {
   });
 }
 
-// 로그인이 없으므로, 명단에서 고른 이름을 이 브라우저 쿠키에 기억해 둔다.
+// 로그인이 없으므로, 이름을 처음 고른 기기에 그 이름을 묶는다(선착순 잠금).
+// 쿠키에는 참여자 ID가 아니라 비밀 키(claim_token)를 넣어서, 다른 사람이 ID를 알아도 그 이름으로 들어올 수 없다.
 const cookieName = (meetingId) => `mp_${meetingId}`;
+const adminCookieName = (meetingId) => `mpa_${meetingId}`;
+const COOKIE = { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 60 * 60 * 24 * 60, path: "/" };
+const PIN_TRIES = 5;
+const PIN_LOCK_MINUTES = 10;
 const lines = (text) =>
   String(text || "")
     .split("\n")
@@ -45,10 +51,18 @@ const toInt = (v) => {
 
 async function currentParticipant(meetingId) {
   const store = await cookies();
-  const id = store.get(cookieName(meetingId))?.value;
-  if (!id) return null;
-  const { data } = await db().from("participants").select("*").eq("id", id).eq("meeting_id", meetingId).maybeSingle();
+  const token = store.get(cookieName(meetingId))?.value;
+  if (!token) return null;
+  const { data } = await db().from("participants").select("*").eq("claim_token", token).eq("meeting_id", meetingId).maybeSingle();
   return data;
+}
+
+async function isAdmin(meetingId) {
+  const store = await cookies();
+  const token = store.get(adminCookieName(meetingId))?.value;
+  if (!token) return false;
+  const { data } = await db().from("meetings").select("id").eq("id", meetingId).eq("admin_token", token).maybeSingle();
+  return Boolean(data);
 }
 
 async function openMeeting(meetingId) {
@@ -82,9 +96,11 @@ export async function createMeeting(prevState, formData) {
   const { data: meeting, error } = await db()
     .from("meetings")
     .insert({ title, mode, deadline: deadline.toISOString() })
-    .select("id")
+    .select("id, admin_token")
     .single();
   if (error) return { error: "모임을 만들지 못했어요. 잠시 뒤 다시 시도해 주세요." };
+  // 모임을 만든 기기는 모임장으로 기억한다. (다른 기기는 모임장 링크로)
+  (await cookies()).set(adminCookieName(meeting.id), meeting.admin_token, COOKIE);
 
   await db().from("participants").insert(names.map((name) => ({ meeting_id: meeting.id, name })));
 
@@ -103,29 +119,79 @@ export async function createMeeting(prevState, formData) {
 }
 
 // 2. 명단에서 내 이름 고르기
+// 아직 아무도 안 고른 이름이면 이 기기에 묶고 번호 3자리를 발급한다. 이미 누가 고른 이름이면 번호를 물어본다.
 export async function chooseParticipant(meetingId, participantId) {
+  const open = await openMeeting(meetingId);
+  if (open.error) return { error: open.error };
+  const token = randomBytes(24).toString("base64url");
+  const pin = String(randomInt(0, 1000)).padStart(3, "0");
+  // claim_token이 비어 있을 때만 바꿔서, 두 사람이 동시에 눌러도 한 명만 차지한다.
   const { data } = await db()
     .from("participants")
+    .update({ claim_token: token, pin, pin_fails: 0, pin_locked_until: null })
+    .eq("id", participantId)
+    .eq("meeting_id", meetingId)
+    .is("claim_token", null)
     .select("id")
+    .maybeSingle();
+  if (!data) return { locked: true };
+  (await cookies()).set(cookieName(meetingId), token, COOKIE);
+  redirect(`/m/${meetingId}?welcome=1`);
+}
+
+// 이미 고른 이름에 번호로 들어오기 (다른 폰·브라우저). 5번 틀리면 10분 동안 막는다.
+export async function unlockParticipant(meetingId, participantId, prevState, formData) {
+  const pin = String(formData.get("pin") || "").replace(/[^0-9]/g, "");
+  const { data: p } = await db()
+    .from("participants")
+    .select("id, claim_token, pin, pin_fails, pin_locked_until")
     .eq("id", participantId)
     .eq("meeting_id", meetingId)
     .maybeSingle();
-  if (!data) return;
-  const store = await cookies();
-  store.set(cookieName(meetingId), participantId, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 60,
-    path: "/",
-  });
+  if (!p) return { error: "이름을 찾을 수 없어요." };
+  if (!p.claim_token) return { error: "아직 아무도 안 고른 이름이에요. 이름을 다시 눌러 주세요." };
+
+  const now = new Date();
+  if (p.pin_locked_until && new Date(p.pin_locked_until) > now) {
+    const min = Math.ceil((new Date(p.pin_locked_until) - now) / 60000);
+    return { error: `번호를 여러 번 틀려서 잠겼어요. ${min}분 뒤에 다시 해 주세요.` };
+  }
+  if (pin !== p.pin) {
+    const fails = p.pin_fails + 1;
+    const lock = fails >= PIN_TRIES;
+    await db()
+      .from("participants")
+      .update({ pin_fails: lock ? 0 : fails, pin_locked_until: lock ? new Date(now.getTime() + PIN_LOCK_MINUTES * 60000).toISOString() : null })
+      .eq("id", p.id);
+    return { error: lock ? `${PIN_TRIES}번 틀려서 ${PIN_LOCK_MINUTES}분 동안 잠겼어요.` : `번호가 달라요. (${PIN_TRIES - fails}번 남음)` };
+  }
+
+  await db().from("participants").update({ pin_fails: 0, pin_locked_until: null }).eq("id", p.id);
+  (await cookies()).set(cookieName(meetingId), p.claim_token, COOKIE);
   refresh();
+  return { ok: true };
 }
 
+// 이 기기에서만 나간다. 이름은 계속 내 것으로 잠겨 있고, 번호로 다시 들어올 수 있다.
 export async function forgetParticipant(meetingId) {
   const store = await cookies();
   store.delete(cookieName(meetingId));
   refresh();
+}
+
+// 모임장: 이름 잠금 풀기 (번호를 잊었거나, 남이 먼저 내 이름을 골랐을 때). 그 이름의 응답도 지운다.
+export async function resetParticipant(meetingId, participantId) {
+  if (!(await isAdmin(meetingId))) return { error: "모임장만 할 수 있어요." };
+  const { data: p } = await db().from("participants").select("id").eq("id", participantId).eq("meeting_id", meetingId).maybeSingle();
+  if (!p) return { error: "이름을 찾을 수 없어요." };
+  await db().from("responses").delete().eq("participant_id", p.id);
+  await db()
+    .from("participants")
+    .update({ claim_token: null, pin: null, pin_fails: 0, pin_locked_until: null, voted_at: null, budget: null })
+    .eq("id", participantId)
+    .eq("meeting_id", meetingId);
+  refresh();
+  return { ok: true };
 }
 
 // 3. 투표 (처음 투표와 수정 모두)
