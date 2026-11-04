@@ -69,11 +69,13 @@ export async function createMeeting(prevState, formData) {
   await db().from("participants").insert(names.map((name) => ({ meeting_id: meeting.id, name })));
 
   const initial = [
-    ...(mode !== "place" ? dates.map((label) => ({ meeting_id: meeting.id, kind: "date", label })) : []),
+    // 여러 줄을 한 번에 넣을 때는 모든 줄의 칸이 같아야 한다. (빠진 칸은 null로 들어가서 ai_status 제약에 걸림)
+    ...(mode !== "place" ? dates.map((label) => ({ meeting_id: meeting.id, kind: "date", label, ai_status: "none" })) : []),
     ...(mode !== "date" ? places.map((label) => ({ meeting_id: meeting.id, kind: "place", label, ai_status: aiStatus() })) : []),
   ];
   if (initial.length) {
-    const { data: inserted } = await db().from("candidates").insert(initial).select("id, kind");
+    const { data: inserted, error: candError } = await db().from("candidates").insert(initial).select("id, kind");
+    if (candError) console.error("처음 후보 저장 실패", candError.message);
     summarizeLater((inserted || []).filter((c) => c.kind === "place").map((c) => c.id));
   }
 

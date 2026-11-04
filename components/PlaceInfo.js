@@ -28,14 +28,18 @@ function AiSummary({ place }) {
           {s.address && <p>주소 {s.address}</p>}
           {s.review && <p>후기 {s.review}</p>}
           {sources.length > 0 && (
-            <p>
-              출처{" "}
-              {sources.map((src, i) => (
-                <a key={i} href={src.uri} target="_blank" rel="noreferrer" className="mr-1 underline">
-                  {src.title}
-                </a>
-              ))}
-            </p>
+            <div>
+              <p>출처</p>
+              <ul className="ml-3 list-disc">
+                {sources.map((src, i) => (
+                  <li key={i}>
+                    <a href={src.uri} target="_blank" rel="noreferrer" className="underline">
+                      {src.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {/* 구글 검색 기능(Grounding)을 쓰면 검색 제안을 꼭 보여 줘야 한다. */}
           {suggestions && <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: suggestions }} />}
