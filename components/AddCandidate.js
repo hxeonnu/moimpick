@@ -65,8 +65,8 @@ export default function AddCandidate({ meetingId, mode }) {
           <>
             <input name="label" className={input} placeholder="가게 이름 또는 지도 링크 (필수)" required />
             <p className="text-xs text-sub">
-              카카오맵·네이버 지도 링크를 붙여 넣으면 가게를 정확히 찾아요. 이름만 적을 땐 지점이나 대략적인 위치도 같이 적어 주세요.
-              (예: 금수돼지국밥 경성대점)
+              이름만 적을 땐 지점이나 대략적인 위치도 같이 적어 주세요. (예: 금수돼지국밥 경성대점)
+              카카오맵 링크는 그대로 붙여 넣으면 되고, 네이버 지도 링크는 앞에 가게 이름을 같이 적어 주세요.
             </p>
             <div className="grid grid-cols-2 gap-2">
               <input name="region" className={input} placeholder="위치 (예: 경성대)" />

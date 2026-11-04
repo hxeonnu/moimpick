@@ -6,15 +6,19 @@ import { refresh } from "next/cache";
 import { after } from "next/server";
 import { db } from "@/lib/db";
 import { summarizePlace, aiEnabled } from "@/lib/gemini";
-import { looksLikeUrl, resolvePlaceLink, regionFromAddress } from "@/lib/placeLink";
+import { splitLink, isMapLink, resolvePlaceLink, regionFromAddress } from "@/lib/placeLink";
 
-// 장소 입력은 가게 이름 또는 지도 링크. 링크면 미리보기 정보로 정확한 가게 이름과 지역을 알아낸다.
+// 장소 입력은 가게 이름, 지도 링크, 또는 "이름 + 링크".
+// 링크는 미리보기 정보로 정확한 가게 이름과 지역을 알아낸다. 네이버 지도 링크는 이름이 안 읽혀서 같이 적은 이름을 쓴다.
 async function placeFromInput(text, region) {
-  if (!looksLikeUrl(text)) return { label: text, region: region || null, map_url: null };
-  const found = await resolvePlaceLink(text).catch(() => null);
-  if (!found) return null;
-  return { label: found.name, region: region || regionFromAddress(found.address), map_url: found.url };
+  const { name, url } = splitLink(text);
+  const link = url && isMapLink(url) ? url : null;
+  if (!link) return name ? { label: name, region: region || null, map_url: null } : null;
+  const found = await resolvePlaceLink(link).catch(() => null);
+  if (found) return { label: found.name, region: region || regionFromAddress(found.address), map_url: found.url };
+  return name ? { label: name, region: region || null, map_url: link } : null;
 }
+const LINK_HELP = "링크 앞에 가게 이름과 지점을 같이 적어 주세요. (예: 평화김해뒷고기 경성대점 https://naver.me/…)";
 
 // 장소가 추가되면 응답을 먼저 보내고, AI 요약은 뒤에서 만든다. (10초 넘게 걸려서)
 const aiStatus = () => (aiEnabled() ? "pending" : "none");
@@ -68,6 +72,11 @@ export async function createMeeting(prevState, formData) {
   if (Number.isNaN(deadline.getTime()) || deadline <= new Date()) return { error: "마감 시간은 지금보다 뒤여야 해요." };
   if (names.length < 2) return { error: "참여자 이름을 두 명 이상 한 줄에 한 명씩 적어 주세요." };
 
+  // 장소 링크는 모임을 만들기 전에 확인해서, 못 읽은 줄이 있으면 고쳐 달라고 한다.
+  const placeRows = mode !== "date" ? await Promise.all(places.map((text) => placeFromInput(text))) : [];
+  const badPlace = placeRows.findIndex((p) => !p);
+  if (badPlace >= 0) return { error: `장소 "${places[badPlace]}"에서 가게 이름을 읽지 못했어요. ${LINK_HELP}` };
+
   const { data: meeting, error } = await db()
     .from("meetings")
     .insert({ title, mode, deadline: deadline.toISOString() })
@@ -80,12 +89,7 @@ export async function createMeeting(prevState, formData) {
   const initial = [
     // 여러 줄을 한 번에 넣을 때는 모든 줄의 칸이 같아야 한다. (빠진 칸은 null로 들어가서 ai_status 제약에 걸림)
     ...(mode !== "place" ? dates.map((label) => ({ meeting_id: meeting.id, kind: "date", label, region: null, map_url: null, ai_status: "none" })) : []),
-    ...(mode !== "date"
-      ? (await Promise.all(places.map((text) => placeFromInput(text))))
-          // 링크에서 가게를 못 찾으면 링크 자체를 지도 링크로 남겨 둔다.
-          .map((p, i) => p || { label: "지도 링크로 추가한 장소", region: null, map_url: places[i] })
-          .map((p) => ({ meeting_id: meeting.id, kind: "place", ...p, ai_status: aiStatus() }))
-      : []),
+    ...placeRows.map((p) => ({ meeting_id: meeting.id, kind: "place", ...p, ai_status: aiStatus() })),
   ];
   if (initial.length) {
     const { data: inserted, error: candError } = await db().from("candidates").insert(initial).select("id, kind");
@@ -169,7 +173,7 @@ export async function addCandidate(meetingId, prevState, formData) {
   const row = { meeting_id: meetingId, kind, label: input, added_by: me.id };
   if (kind === "place") {
     const place = await placeFromInput(input, String(formData.get("region") || "").trim());
-    if (!place) return { error: "링크에서 가게를 찾지 못했어요. 가게 이름과 지점(또는 위치)으로 적어 주세요." };
+    if (!place) return { error: `링크에서 가게 이름을 읽지 못했어요. ${LINK_HELP}` };
     const price = toInt(formData.get("price"));
     Object.assign(row, {
       ...place,
