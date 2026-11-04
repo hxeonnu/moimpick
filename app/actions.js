@@ -6,6 +6,15 @@ import { refresh } from "next/cache";
 import { after } from "next/server";
 import { db } from "@/lib/db";
 import { summarizePlace, aiEnabled } from "@/lib/gemini";
+import { looksLikeUrl, resolvePlaceLink, regionFromAddress } from "@/lib/placeLink";
+
+// 장소 입력은 가게 이름 또는 지도 링크. 링크면 미리보기 정보로 정확한 가게 이름과 지역을 알아낸다.
+async function placeFromInput(text, region) {
+  if (!looksLikeUrl(text)) return { label: text, region: region || null, map_url: null };
+  const found = await resolvePlaceLink(text).catch(() => null);
+  if (!found) return null;
+  return { label: found.name, region: region || regionFromAddress(found.address), map_url: found.url };
+}
 
 // 장소가 추가되면 응답을 먼저 보내고, AI 요약은 뒤에서 만든다. (10초 넘게 걸려서)
 const aiStatus = () => (aiEnabled() ? "pending" : "none");
@@ -70,8 +79,13 @@ export async function createMeeting(prevState, formData) {
 
   const initial = [
     // 여러 줄을 한 번에 넣을 때는 모든 줄의 칸이 같아야 한다. (빠진 칸은 null로 들어가서 ai_status 제약에 걸림)
-    ...(mode !== "place" ? dates.map((label) => ({ meeting_id: meeting.id, kind: "date", label, ai_status: "none" })) : []),
-    ...(mode !== "date" ? places.map((label) => ({ meeting_id: meeting.id, kind: "place", label, ai_status: aiStatus() })) : []),
+    ...(mode !== "place" ? dates.map((label) => ({ meeting_id: meeting.id, kind: "date", label, region: null, map_url: null, ai_status: "none" })) : []),
+    ...(mode !== "date"
+      ? (await Promise.all(places.map((text) => placeFromInput(text))))
+          // 링크에서 가게를 못 찾으면 링크 자체를 지도 링크로 남겨 둔다.
+          .map((p, i) => p || { label: "지도 링크로 추가한 장소", region: null, map_url: places[i] })
+          .map((p) => ({ meeting_id: meeting.id, kind: "place", ...p, ai_status: aiStatus() }))
+      : []),
   ];
   if (initial.length) {
     const { data: inserted, error: candError } = await db().from("candidates").insert(initial).select("id, kind");
@@ -149,19 +163,19 @@ export async function addCandidate(meetingId, prevState, formData) {
   if (!me) return { error: "명단에서 이름을 먼저 골라 주세요." };
 
   const kind = formData.get("kind") === "place" ? "place" : "date";
-  const label = String(formData.get("label") || "").trim();
-  if (!label) return { error: kind === "date" ? "날짜를 적어 주세요." : "가게 이름을 적어 주세요." };
+  const input = String(formData.get("label") || "").trim();
+  if (!input) return { error: kind === "date" ? "날짜를 적어 주세요." : "가게 이름이나 지도 링크를 적어 주세요." };
 
-  const row = { meeting_id: meetingId, kind, label, added_by: me.id };
+  const row = { meeting_id: meetingId, kind, label: input, added_by: me.id };
   if (kind === "place") {
+    const place = await placeFromInput(input, String(formData.get("region") || "").trim());
+    if (!place) return { error: "링크에서 가게를 찾지 못했어요. 가게 이름과 지점(또는 위치)으로 적어 주세요." };
     const price = toInt(formData.get("price"));
-    const mapUrl = String(formData.get("map_url") || "").trim();
     Object.assign(row, {
-      region: String(formData.get("region") || "").trim() || null,
+      ...place,
       description: String(formData.get("description") || "").trim() || null,
       price_min: price,
       price_max: price,
-      map_url: /^https?:\/\//.test(mapUrl) ? mapUrl : null,
       ai_status: aiStatus(),
     });
   }
@@ -171,5 +185,5 @@ export async function addCandidate(meetingId, prevState, formData) {
   if (kind === "place") summarizeLater([inserted.id]);
 
   refresh();
-  return { ok: true, label, kind, at: new Date().toISOString() };
+  return { ok: true, label: row.label, kind, at: new Date().toISOString() };
 }

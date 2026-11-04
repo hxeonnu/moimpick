@@ -57,8 +57,10 @@ export default function CreateForm() {
       {mode !== "date" && (
         <div>
           <label className={label} htmlFor="places">장소 후보 (선택)</label>
-          <textarea id="places" name="places" rows={3} className={input} placeholder={"금수돼지국밥 경성부경대점\n평화김해뒷고기"} />
-          <p className="mt-1 text-xs text-sub">가격·지도 링크는 모임을 만든 뒤 후보 추가에서 넣을 수 있어요.</p>
+          <textarea id="places" name="places" rows={3} className={input} placeholder={"금수돼지국밥 경성부경대점\nhttps://place.map.kakao.com/…"} />
+          <p className="mt-1 text-xs text-sub">
+            한 줄에 하나씩, 가게 이름 또는 지도 링크. 이름만 적을 땐 지점이나 대략적인 위치도 같이 적어 주세요.
+          </p>
         </div>
       )}
 

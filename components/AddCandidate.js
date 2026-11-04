@@ -63,13 +63,16 @@ export default function AddCandidate({ meetingId, mode }) {
           <input name="label" className={input} placeholder="예: 11/7 (금) 저녁" required />
         ) : (
           <>
-            <input name="label" className={input} placeholder="가게 이름 (필수)" required />
+            <input name="label" className={input} placeholder="가게 이름 또는 지도 링크 (필수)" required />
+            <p className="text-xs text-sub">
+              카카오맵·네이버 지도 링크를 붙여 넣으면 가게를 정확히 찾아요. 이름만 적을 땐 지점이나 대략적인 위치도 같이 적어 주세요.
+              (예: 금수돼지국밥 경성대점)
+            </p>
             <div className="grid grid-cols-2 gap-2">
-              <input name="region" className={input} placeholder="지역 (예: 경성대)" />
-              <input name="price" inputMode="numeric" className={input} placeholder="1인 가격 (원)" />
+              <input name="region" className={input} placeholder="위치 (예: 경성대)" />
+              <input name="price" inputMode="numeric" className={input} placeholder="1인 가격 (선택)" />
             </div>
             <input name="description" className={input} placeholder="한 줄 설명 (선택)" />
-            <input name="map_url" className={input} placeholder="지도 링크 (선택)" />
           </>
         )}
         {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
