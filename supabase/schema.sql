@@ -46,6 +46,7 @@ create table candidates (
   ai_status   text not null default 'none'
               check (ai_status in ('none', 'pending', 'done', 'failed')),
   ai_sources  jsonb,                  -- 요약 출처
+  dropped     boolean not null default false, -- 동점 재투표에서 빠진 후보
   created_at  timestamptz not null default now()
 );
 
@@ -60,6 +61,12 @@ create table responses (
   updated_at     timestamptz not null default now(),
   unique (participant_id, candidate_id)
 );
+
+-- 확정 후보는 후보 테이블을 만든 뒤에 붙인다 (meetings가 candidates보다 먼저 만들어지므로)
+alter table meetings
+  add column final_date_id  uuid references candidates (id) on delete set null,  -- 마감 후 동점이면 모임장이 고른 날짜
+  add column final_place_id uuid references candidates (id) on delete set null,  -- 마감 후 동점이면 모임장이 고른 장소
+  add column round          integer not null default 1;                          -- 몇 번째 투표인지 (동점 재투표하면 2, 3…)
 
 create index on participants (meeting_id);
 create index on candidates (meeting_id);

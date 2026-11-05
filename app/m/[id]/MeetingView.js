@@ -54,6 +54,7 @@ export default async function MeetingView({ params, searchParams }) {
     <div className="space-y-4">
       <header>
         <span className="inline-block rounded-full bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-ink">
+          {meeting.round > 1 && `🔁 ${meeting.round}차 재투표 · `}
           {closed ? "투표 마감" : `마감까지 ${left}`} · {formatDeadline(meeting.deadline)}
         </span>
         <h1 className="mt-2 text-2xl font-bold">{meeting.title}</h1>
@@ -73,7 +74,7 @@ export default async function MeetingView({ params, searchParams }) {
       {me && !closed && sp?.welcome === "1" && <PinNotice pin={me.pin} />}
 
       {closed ? (
-        <FinalResult mode={meeting.mode} dateRanks={dateRanks} placeRanks={placeRanks} count={count} />
+        <FinalResult meeting={meeting} dateRanks={dateRanks} placeRanks={placeRanks} count={count} isAdmin={isAdmin} />
       ) : !me ? (
         <NamePicker meetingId={id} title={meeting.title} participants={people} />
       ) : (
@@ -81,13 +82,15 @@ export default async function MeetingView({ params, searchParams }) {
           <VoteForm
             meetingId={id}
             mode={meeting.mode}
+            round={meeting.round}
             budget={me.budget}
             voted={Boolean(me.voted_at)}
             absent={me.absent}
             dates={candidates.filter((c) => c.kind === "date").map((c) => ({ ...c, mine: myAnswers[c.id] || null, isNew: isNewForMe(c) }))}
             places={candidates.filter((c) => c.kind === "place").map((c) => ({ ...c, mine: myAnswers[c.id] || null, isNew: isNewForMe(c) }))}
           />
-          <AddCandidate meetingId={id} mode={meeting.mode} />
+          {/* 재투표는 동점이었던 후보로만 하므로 후보 추가를 막는다. */}
+          {meeting.round === 1 && <AddCandidate meetingId={id} mode={meeting.mode} />}
         </>
       )}
 

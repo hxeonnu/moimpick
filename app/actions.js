@@ -5,7 +5,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { after } from "next/server";
-import { db } from "@/lib/db";
+import { db, loadMeeting } from "@/lib/db";
+import { rankDates, rankPlaces, decide, dateKey, placeKey } from "@/lib/ranking";
 import { summarizePlace, aiEnabled } from "@/lib/gemini";
 import { splitLink, isMapLink, resolvePlaceLink, regionFromAddress } from "@/lib/placeLink";
 
@@ -205,6 +206,61 @@ export async function removeParticipant(meetingId, participantId) {
   return { ok: true };
 }
 
+// 모임장: 지금 마감하기 (다 모였으면 마감 시간을 기다리지 않고 바로 결과를 확정한다)
+export async function closeNow(meetingId) {
+  if (!(await isAdmin(meetingId))) return { error: "모임장만 할 수 있어요." };
+  await db().from("meetings").update({ deadline: new Date().toISOString() }).eq("id", meetingId);
+  refresh();
+  return { ok: true };
+}
+
+// 모임장: 동점 항목으로만 재투표 열기. 같은 링크·같은 명단 그대로, 동점이었던 후보만 남기고 처음부터 다시 투표한다.
+// 동점이 아니었던 쪽(예: 장소는 1위가 하나)은 그 1위만 남겨 확정된 채로 둔다. 불참한 사람은 불참 그대로.
+export async function revote(meetingId, prevState, formData) {
+  if (!(await isAdmin(meetingId))) return { error: "모임장만 할 수 있어요." };
+  const data = await loadMeeting(meetingId);
+  if (!data) return { error: "모임을 찾을 수 없어요." };
+  const { meeting, participants, candidates, responses } = data;
+  if (new Date(meeting.deadline) > new Date()) return { error: "마감된 뒤에 재투표를 열 수 있어요." };
+
+  const deadline = new Date(`${String(formData.get("deadline") || "")}:00+09:00`);
+  if (Number.isNaN(deadline.getTime()) || deadline <= new Date()) return { error: "새 마감 시간은 지금보다 뒤여야 해요." };
+
+  // 모임장이 이미 하나를 골랐더라도 재투표는 원래 동점 기준으로 연다.
+  const results = [
+    decide(rankDates(candidates, participants, responses), dateKey, null),
+    decide(rankPlaces(candidates, participants, responses), placeKey, null),
+  ];
+  if (!results.some((r) => !r.winner && r.tied.length > 1)) return { error: "동점인 항목이 없어요." };
+  const keep = new Set(results.flatMap((r) => (r.winner ? [r.winner] : r.tied)).map((r) => r.candidate.id));
+  const drop = candidates.filter((c) => !keep.has(c.id)).map((c) => c.id);
+
+  if (drop.length) await db().from("candidates").update({ dropped: true }).in("id", drop);
+  await db().from("responses").delete().in("candidate_id", [...keep]);
+  await db().from("participants").update({ voted_at: null }).eq("meeting_id", meetingId);
+  await db()
+    .from("meetings")
+    .update({ deadline: deadline.toISOString(), round: (meeting.round || 1) + 1, final_date_id: null, final_place_id: null })
+    .eq("id", meetingId);
+  refresh();
+  return { ok: true };
+}
+
+// 모임장: 마감 후 1위가 동점일 때 하나를 골라 확정한다.
+export async function pickFinal(meetingId, candidateId) {
+  if (!(await isAdmin(meetingId))) return { error: "모임장만 할 수 있어요." };
+  const { data: m } = await db().from("meetings").select("deadline").eq("id", meetingId).maybeSingle();
+  if (!m || new Date(m.deadline) > new Date()) return { error: "마감된 뒤에 고를 수 있어요." };
+  const { data: c } = await db().from("candidates").select("id, kind").eq("id", candidateId).eq("meeting_id", meetingId).maybeSingle();
+  if (!c) return { error: "후보를 찾을 수 없어요." };
+  await db()
+    .from("meetings")
+    .update(c.kind === "date" ? { final_date_id: c.id } : { final_place_id: c.id })
+    .eq("id", meetingId);
+  refresh();
+  return { ok: true };
+}
+
 // 모임장: 이름 잠금 풀기 (번호를 잊었거나, 남이 먼저 내 이름을 골랐을 때). 그 이름의 응답도 지운다.
 export async function resetParticipant(meetingId, participantId) {
   if (!(await isAdmin(meetingId))) return { error: "모임장만 할 수 있어요." };
@@ -273,6 +329,8 @@ export async function addCandidate(meetingId, prevState, formData) {
   if (open.error) return { error: open.error };
   const me = await currentParticipant(meetingId);
   if (!me) return { error: "명단에서 이름을 먼저 골라 주세요." };
+
+  if (open.meeting.round > 1) return { error: "재투표 중에는 후보를 추가할 수 없어요." };
 
   const kind = formData.get("kind") === "place" ? "place" : "date";
   const input = String(formData.get("label") || "").trim();

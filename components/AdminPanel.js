@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { addParticipant, removeParticipant, resetParticipant } from "@/app/actions";
+import { addParticipant, closeNow, removeParticipant, resetParticipant } from "@/app/actions";
 import { useCopy, ManualCopy } from "./useCopy";
 
 // 모임장에게만 보이는 메뉴. 모임장 링크 보관, 참여자 추가·빼기, 이름 잠금 풀기.
@@ -14,6 +14,14 @@ export default function AdminPanel({ meetingId, adminToken, participants, closed
 
   function copyAdminLink() {
     copy(`${window.location.origin}/m/${meetingId}/admin?t=${adminToken}`);
+  }
+
+  function closeEarly() {
+    if (!window.confirm("지금 투표를 마감할까요? 마감하면 더 이상 투표·수정할 수 없고 결과가 확정돼요.")) return;
+    start(async () => {
+      const res = await closeNow(meetingId);
+      setError(res?.error || null);
+    });
   }
 
   // 명단 빼기는 "불참 지정"이 아니라 애초에 대상이 아닌 사람을 지우는 것 (스크린샷에 섞인 사람, 오타·중복)
@@ -43,6 +51,20 @@ export default function AdminPanel({ meetingId, adminToken, participants, closed
         {copied ? "복사됨" : "모임장 링크 복사"}
       </button>
       <ManualCopy text={manual} onClose={close} />
+
+      {!closed && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold">지금 마감하기</p>
+          <p className="mt-0.5 text-xs text-sub">다 모였으면 마감 시간을 기다리지 않고 바로 결과를 확정해요.</p>
+          <button
+            onClick={closeEarly}
+            disabled={pending}
+            className="mt-2 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 disabled:opacity-60"
+          >
+            지금 마감하기
+          </button>
+        </div>
+      )}
 
       {!closed && (
         <div className="mt-4">

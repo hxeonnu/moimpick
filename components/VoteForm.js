@@ -60,9 +60,12 @@ export default function VoteForm(props) {
   );
 }
 
-function Ballot({ meetingId, mode, dates, places, budget, voted, absent, onAbsent, absentPending }) {
+function Ballot({ meetingId, mode, round, dates, places, budget, voted, absent, onAbsent, absentPending }) {
   const [state, action, pending] = useActionState(submitVote.bind(null, meetingId), null);
   const hasNew = [...dates, ...places].some((c) => c.isNew);
+  // 재투표에서 후보가 하나만 남은 쪽은 이미 정해진 것이라 투표 없이 보여 주기만 한다.
+  const fixedDate = round > 1 && dates.length === 1 ? dates[0] : null;
+  const fixedPlace = round > 1 && places.length === 1 ? places[0] : null;
 
   return (
     <form action={action} className="space-y-4 rounded-2xl bg-white p-4">
@@ -72,11 +75,22 @@ function Ballot({ meetingId, mode, dates, places, budget, voted, absent, onAbsen
           이번엔 불참
         </button>
       </div>
+      {round > 1 && (
+        <p className="rounded-lg bg-brand-soft px-3 py-2 text-sm text-brand-ink">
+          🔁 {round}차 재투표예요. 동점이었던 후보로만 다시 골라 주세요.
+        </p>
+      )}
+      {(fixedDate || fixedPlace) && (
+        <div className="rounded-lg bg-canvas px-3 py-2 text-sm">
+          {fixedDate && <p>📅 날짜는 <strong>{fixedDate.label}</strong>(으)로 정해졌어요.</p>}
+          {fixedPlace && <p>📍 장소는 <strong>{fixedPlace.label}</strong>(으)로 정해졌어요.</p>}
+        </div>
+      )}
       {hasNew && (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">새 후보가 추가됐어요. 확인하고 다시 저장해 주세요.</p>
       )}
 
-      {mode !== "place" && (
+      {mode !== "place" && !fixedDate && (
         <div>
           <h2 className="font-bold">
             📅 되는 날짜 <span className="text-xs font-normal text-sub">모두 체크해 주세요</span>
@@ -95,7 +109,7 @@ function Ballot({ meetingId, mode, dates, places, budget, voted, absent, onAbsen
         </div>
       )}
 
-      {mode !== "date" && (
+      {mode !== "date" && !fixedPlace && (
         <div>
           <h2 className="font-bold">
             📍 장소 <span className="text-xs font-normal text-sub">좋은 곳·싫은 곳만 눌러 주세요</span>
@@ -126,7 +140,7 @@ function Ballot({ meetingId, mode, dates, places, budget, voted, absent, onAbsen
         </div>
       )}
 
-      {mode !== "date" && (
+      {mode !== "date" && !fixedPlace && (
         <label className="flex items-center justify-between gap-3 rounded-xl bg-canvas px-3 py-2.5 text-sm">
           <span>💰 내 1인 예산</span>
           <span className="flex items-center gap-1">
