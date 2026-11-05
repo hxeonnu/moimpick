@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { after } from "next/server";
-import { db, loadMeeting } from "@/lib/db";
+import { db, loadMeeting, deleteOldMeetings } from "@/lib/db";
 import { getOwnerId, OWNER_COOKIE } from "@/lib/session";
 import { rankDates, rankPlaces, decide, dateKey, placeKey } from "@/lib/ranking";
 import { summarizePlace, aiEnabled } from "@/lib/gemini";
@@ -126,6 +126,8 @@ export async function createMeeting(prevState, formData) {
     summarizeLater((inserted || []).filter((c) => c.kind === "place").map((c) => c.id));
   }
 
+  // 매일 정리(Cron)와 별개로, 모임이 만들어질 때도 오래된 모임을 한 번 지운다. (응답을 기다리지 않음)
+  after(deleteOldMeetings);
   redirect(`/m/${meeting.id}?new=1`);
 }
 
