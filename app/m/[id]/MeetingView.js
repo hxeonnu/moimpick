@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { loadMeeting, loadMe } from "@/lib/db";
+import { getOwnerId, kakaoLoginEnabled } from "@/lib/session";
 import { rankDates, rankPlaces, noCommonDate, headcount } from "@/lib/ranking";
 import { formatDeadline, timeLeft } from "@/lib/format";
 import ShareBox from "@/components/ShareBox";
@@ -30,7 +31,9 @@ export default async function MeetingView({ params, searchParams }) {
   // 쿠키의 비밀 키로 나를 찾는다. 모임장은 모임장 쿠키가 모임의 admin_token과 같은지로 안다.
   const store = await cookies();
   const me = await loadMe(id, store.get(`mp_${id}`)?.value);
-  const isAdmin = store.get(`mpa_${id}`)?.value === meeting.admin_token;
+  const ownerId = await getOwnerId();
+  const isOwner = Boolean(ownerId) && meeting.owner_kakao_id === ownerId;
+  const isAdmin = store.get(`mpa_${id}`)?.value === meeting.admin_token || isOwner;
   // 화면(클라이언트)에는 이름·투표 여부·잠김 여부만 보낸다. (예산은 순위 계산에만 서버에서 쓴다)
   const people = participants.map(({ id, name, voted_at, absent, claimed }) => ({ id, name, voted_at, absent, claimed }));
   const count = headcount(participants);
@@ -96,7 +99,16 @@ export default async function MeetingView({ params, searchParams }) {
       )}
 
       <Participation meetingId={id} participants={people} closed={closed} />
-      {isAdmin && <AdminPanel meetingId={id} meetingTitle={meeting.title} adminToken={meeting.admin_token} participants={people} closed={closed} />}
+      {isAdmin && (
+        <AdminPanel
+          meetingId={id}
+          meetingTitle={meeting.title}
+          kakao={kakaoLoginEnabled() ? (isOwner ? "mine" : meeting.owner_kakao_id ? "other" : "none") : "off"}
+          adminToken={meeting.admin_token}
+          participants={people}
+          closed={closed}
+        />
+      )}
 
       {canSeeRanks ? (
         <>

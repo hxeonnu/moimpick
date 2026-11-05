@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { after } from "next/server";
 import { db, loadMeeting } from "@/lib/db";
+import { getOwnerId, OWNER_COOKIE } from "@/lib/session";
 import { rankDates, rankPlaces, decide, dateKey, placeKey } from "@/lib/ranking";
 import { summarizePlace, aiEnabled } from "@/lib/gemini";
 import { splitLink, isMapLink, resolvePlaceLink, regionFromAddress } from "@/lib/placeLink";
@@ -58,12 +59,14 @@ async function currentParticipant(meetingId) {
   return data;
 }
 
+// 모임장: 이 기기의 모임장 쿠키가 맞거나, 카카오로 연결한 모임장 본인이면
 async function isAdmin(meetingId) {
   const store = await cookies();
   const token = store.get(adminCookieName(meetingId))?.value;
-  if (!token) return false;
-  const { data } = await db().from("meetings").select("id").eq("id", meetingId).eq("admin_token", token).maybeSingle();
-  return Boolean(data);
+  const ownerId = await getOwnerId();
+  if (!token && !ownerId) return false;
+  const { data } = await db().from("meetings").select("admin_token, owner_kakao_id").eq("id", meetingId).maybeSingle();
+  return Boolean(data && ((token && data.admin_token === token) || (ownerId && data.owner_kakao_id === ownerId)));
 }
 
 async function openMeeting(meetingId) {
@@ -71,6 +74,12 @@ async function openMeeting(meetingId) {
   if (!data) return { error: "모임을 찾을 수 없어요." };
   if (new Date(data.deadline) <= new Date()) return { error: "투표가 이미 마감됐어요." };
   return { meeting: data };
+}
+
+// 카카오 연결 끊기 (이 기기에서만 로그아웃. 이미 연결된 모임은 그대로 내 계정에 남는다)
+export async function logoutOwner() {
+  (await cookies()).delete(OWNER_COOKIE);
+  refresh();
 }
 
 // 1. 모임 만들기
@@ -96,7 +105,8 @@ export async function createMeeting(prevState, formData) {
 
   const { data: meeting, error } = await db()
     .from("meetings")
-    .insert({ title, mode, deadline: deadline.toISOString() })
+    // 카카오로 연결한 상태에서 만들면 처음부터 내 카카오 계정에 묶는다.
+    .insert({ title, mode, deadline: deadline.toISOString(), owner_kakao_id: await getOwnerId() })
     .select("id, admin_token")
     .single();
   if (error) return { error: "모임을 만들지 못했어요. 잠시 뒤 다시 시도해 주세요." };

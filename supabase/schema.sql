@@ -11,6 +11,7 @@ create table meetings (
               check (mode in ('both', 'date', 'place')), -- 무엇을 정할지
   deadline    timestamptz not null,                   -- 투표 마감 시간
   admin_token uuid not null default gen_random_uuid(), -- 모임장 전용 링크용
+  owner_kakao_id text,                                  -- 카카오로 연결한 모임장의 회원번호 (선택, 다른 기기에서 내 모임 찾기용)
   created_at  timestamptz not null default now()
 );
 
@@ -68,6 +69,7 @@ alter table meetings
   add column final_place_id uuid references candidates (id) on delete set null,  -- 마감 후 동점이면 모임장이 고른 장소
   add column round          integer not null default 1;                          -- 몇 번째 투표인지 (동점 재투표하면 2, 3…)
 
+create index on meetings (owner_kakao_id);
 create index on participants (meeting_id);
 create index on candidates (meeting_id);
 create index on responses (candidate_id);

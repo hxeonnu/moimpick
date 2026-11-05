@@ -5,7 +5,7 @@ import { addParticipant, closeNow, removeParticipant, resetParticipant } from "@
 import ShareActions from "./ShareActions";
 
 // 모임장에게만 보이는 메뉴. 모임장 링크 보관, 참여자 추가·빼기, 이름 잠금 풀기.
-export default function AdminPanel({ meetingId, meetingTitle, adminToken, participants, closed }) {
+export default function AdminPanel({ meetingId, meetingTitle, kakao, adminToken, participants, closed }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState(null);
   const claimed = participants.filter((p) => p.claimed);
@@ -43,6 +43,7 @@ export default function AdminPanel({ meetingId, meetingTitle, adminToken, partic
         이 기기는 모임장으로 기억돼 있어요. 기록이 지워지거나 다른 폰에서 관리할 때를 위해 모임장 링크를 보관해 두세요. 카톡 공유 창에서
         &lsquo;나와의 채팅&rsquo;을 고르면 나에게만 보내져요. (단톡방에는 올리지 마세요)
       </p>
+      <KakaoLink meetingId={meetingId} kakao={kakao} />
       <div className="mt-2">
         <ShareActions
           path={`/m/${meetingId}/admin?t=${adminToken}`}
@@ -131,5 +132,20 @@ export default function AdminPanel({ meetingId, meetingTitle, adminToken, partic
       )}
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </section>
+  );
+}
+
+// 카카오로 이 모임 연결: 쿠키가 지워지거나 다른 폰이어도 카카오 로그인만 하면 내 모임으로 찾을 수 있다.
+function KakaoLink({ meetingId, kakao }) {
+  if (kakao === "off") return null;
+  if (kakao === "mine") return <p className="mt-2 text-xs font-semibold text-emerald-700">✅ 내 카카오 계정에 연결된 모임이에요</p>;
+  if (kakao === "other") return null;
+  return (
+    <a
+      href={`/auth/kakao?next=/m/${meetingId}`}
+      className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-line py-2 text-xs font-semibold"
+    >
+      🔗 카카오로 이 모임 연결 (다른 기기에서도 관리)
+    </a>
   );
 }

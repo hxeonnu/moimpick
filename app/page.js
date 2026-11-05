@@ -3,7 +3,7 @@ import CreateForm from "@/components/CreateForm";
 import MyMeetings from "@/components/MyMeetings";
 import Logo from "@/components/Logo";
 
-export default function Home() {
+export default function Home({ searchParams }) {
   return (
     <>
       <header className="mb-6">
@@ -15,7 +15,7 @@ export default function Home() {
       </header>
       {/* 모임장 쿠키는 요청마다 읽어야 해서 Suspense 안에서 불러온다. 없으면 아무것도 안 보임 */}
       <Suspense fallback={null}>
-        <MyMeetings />
+        <MyMeetings searchParams={searchParams} />
       </Suspense>
       <CreateForm />
     </>
