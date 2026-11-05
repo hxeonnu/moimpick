@@ -1,4 +1,6 @@
 import "./globals.css";
+import { Suspense } from "react";
+import TopBar, { TopBarFallback } from "@/components/TopBar";
 
 export const metadata = {
   title: "모임픽",
@@ -24,7 +26,13 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="min-h-dvh font-sans antialiased">
-        <main className="mx-auto w-full max-w-md px-4 py-6">{children}</main>
+        <main className="mx-auto w-full max-w-md px-4 pb-8">
+          {/* 지금 주소(usePathname)를 읽어서 Suspense가 필요하다. */}
+          <Suspense fallback={<TopBarFallback />}>
+            <TopBar />
+          </Suspense>
+          {children}
+        </main>
       </body>
     </html>
   );
