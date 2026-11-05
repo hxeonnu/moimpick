@@ -9,7 +9,8 @@ import MeetingRow from "./MeetingRow";
 export default async function HomeSections() {
   await connection();
   const { hosted, joined } = await readMyCookies();
-  const [mine, joinedList] = await Promise.all([loadMeetingSummaries(hosted, await getOwnerId()), loadJoinedMeetings(joined)]);
+  const ownerId = await getOwnerId();
+  const [mine, joinedList] = await Promise.all([loadMeetingSummaries(hosted, ownerId), loadJoinedMeetings(joined)]);
   const now = new Date();
   const open = (m) => new Date(m.deadline) > now;
 
@@ -37,7 +38,12 @@ export default async function HomeSections() {
 
       <Link href="/mine" className="flex items-center justify-between rounded-2xl bg-white p-4">
         <span>
-          <span className="block font-bold">👑 내가 만든 모임</span>
+          <span className="flex items-center gap-1.5 font-bold">
+            👑 내가 만든 모임
+            {ownerId && (
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">✅ 카카오에 연결됨</span>
+            )}
+          </span>
           <span className="text-xs text-sub">
             {mine.length ? `진행 중 ${mineOpen} · 마감 ${mine.length - mineOpen}` : "아직 만든 모임이 없어요"}
           </span>
