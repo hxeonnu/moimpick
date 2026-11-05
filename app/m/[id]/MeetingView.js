@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { loadMeeting, loadMe } from "@/lib/db";
-import { rankDates, rankPlaces, noCommonDate } from "@/lib/ranking";
+import { rankDates, rankPlaces, noCommonDate, headcount } from "@/lib/ranking";
 import { formatDeadline, timeLeft } from "@/lib/format";
 import ShareBox from "@/components/ShareBox";
 import NamePicker from "@/components/NamePicker";
@@ -32,7 +32,8 @@ export default async function MeetingView({ params, searchParams }) {
   const me = await loadMe(id, store.get(`mp_${id}`)?.value);
   const isAdmin = store.get(`mpa_${id}`)?.value === meeting.admin_token;
   // 화면(클라이언트)에는 이름·투표 여부·잠김 여부만 보낸다. (예산은 순위 계산에만 서버에서 쓴다)
-  const people = participants.map(({ id, name, voted_at, claimed }) => ({ id, name, voted_at, claimed }));
+  const people = participants.map(({ id, name, voted_at, absent, claimed }) => ({ id, name, voted_at, absent, claimed }));
+  const count = headcount(participants);
 
   const now = new Date();
   const closed = new Date(meeting.deadline) <= now;
@@ -72,7 +73,7 @@ export default async function MeetingView({ params, searchParams }) {
       {me && !closed && sp?.welcome === "1" && <PinNotice pin={me.pin} />}
 
       {closed ? (
-        <FinalResult mode={meeting.mode} dateRanks={dateRanks} placeRanks={placeRanks} />
+        <FinalResult mode={meeting.mode} dateRanks={dateRanks} placeRanks={placeRanks} count={count} />
       ) : !me ? (
         <NamePicker meetingId={id} title={meeting.title} participants={people} />
       ) : (
@@ -82,6 +83,7 @@ export default async function MeetingView({ params, searchParams }) {
             mode={meeting.mode}
             budget={me.budget}
             voted={Boolean(me.voted_at)}
+            absent={me.absent}
             dates={candidates.filter((c) => c.kind === "date").map((c) => ({ ...c, mine: myAnswers[c.id] || null, isNew: isNewForMe(c) }))}
             places={candidates.filter((c) => c.kind === "place").map((c) => ({ ...c, mine: myAnswers[c.id] || null, isNew: isNewForMe(c) }))}
           />
@@ -99,7 +101,7 @@ export default async function MeetingView({ params, searchParams }) {
             dateRanks={dateRanks}
             placeRanks={placeRanks}
             noCommon={noCommonDate(dateRanks, participants)}
-            total={participants.length}
+            count={count}
           />
           {!closed && <AutoRefresh seconds={5} />}
         </>

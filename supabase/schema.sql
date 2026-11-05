@@ -21,6 +21,7 @@ create table participants (
   name       text not null,
   budget     integer,                -- 1인 예산(원), 비우면 제한 없음
   voted_at   timestamptz,            -- 처음 투표한 시각, 안 했으면 null
+  absent     boolean not null default false, -- 본인이 이번 모임 불참을 눌렀는지 (불참이면 순위 계산에서 빠짐)
   claim_token      text unique,      -- 이름을 고른 기기의 쿠키에 넣는 비밀 키 (null이면 아직 아무도 안 고름)
   pin              text,             -- 다른 기기에서 들어올 때 쓰는 번호 3자리
   pin_fails        integer not null default 0, -- 번호를 연속으로 틀린 횟수

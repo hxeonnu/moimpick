@@ -193,6 +193,18 @@ export async function addParticipant(meetingId, prevState, formData) {
   return { ok: true, name, at: new Date().toISOString() };
 }
 
+// 모임장: 명단에서 빼기 (스크린샷 등으로 넣었는데 모임 대상이 아닌 사람, 오타·중복).
+// 남을 "불참"으로 만드는 게 아니라 명단에서 지우는 것이라, 그 사람의 투표도 함께 지워진다(응답은 cascade).
+export async function removeParticipant(meetingId, participantId) {
+  if (!(await isAdmin(meetingId))) return { error: "모임장만 할 수 있어요." };
+  const { data: people } = await db().from("participants").select("id").eq("meeting_id", meetingId);
+  if (!people?.some((p) => p.id === participantId)) return { error: "이름을 찾을 수 없어요." };
+  if (people.length <= 2) return { error: "명단은 2명 이상이어야 해요." };
+  await db().from("participants").delete().eq("id", participantId).eq("meeting_id", meetingId);
+  refresh();
+  return { ok: true };
+}
+
 // 모임장: 이름 잠금 풀기 (번호를 잊었거나, 남이 먼저 내 이름을 골랐을 때). 그 이름의 응답도 지운다.
 export async function resetParticipant(meetingId, participantId) {
   if (!(await isAdmin(meetingId))) return { error: "모임장만 할 수 있어요." };
@@ -201,7 +213,7 @@ export async function resetParticipant(meetingId, participantId) {
   await db().from("responses").delete().eq("participant_id", p.id);
   await db()
     .from("participants")
-    .update({ claim_token: null, pin: null, pin_fails: 0, pin_locked_until: null, voted_at: null, budget: null })
+    .update({ claim_token: null, pin: null, pin_fails: 0, pin_locked_until: null, voted_at: null, budget: null, absent: false })
     .eq("id", participantId)
     .eq("meeting_id", meetingId);
   refresh();
@@ -234,11 +246,25 @@ export async function submitVote(meetingId, prevState, formData) {
 
   await db()
     .from("participants")
-    .update({ budget: toInt(formData.get("budget")), voted_at: me.voted_at || now })
+    .update({ budget: toInt(formData.get("budget")), voted_at: me.voted_at || now, absent: false })
     .eq("id", me.id);
 
   refresh();
   return { ok: true, at: now };
+}
+
+// 3-1. 이번엔 불참 (본인만). 날짜·장소 답은 지우지 않아서, 다시 참석으로 저장하면 그대로 살아난다.
+export async function setAbsent(meetingId) {
+  const open = await openMeeting(meetingId);
+  if (open.error) return { error: open.error };
+  const me = await currentParticipant(meetingId);
+  if (!me) return { error: "명단에서 이름을 먼저 골라 주세요." };
+  await db()
+    .from("participants")
+    .update({ absent: true, voted_at: me.voted_at || new Date().toISOString() })
+    .eq("id", me.id);
+  refresh();
+  return { ok: true };
 }
 
 // 4. 후보 추가 (누구나)

@@ -8,16 +8,25 @@ function Rank({ n }) {
   );
 }
 
-export default function Results({ mode, dateRanks, placeRanks, noCommon, total }) {
+export default function Results({ mode, dateRanks, placeRanks, noCommon, count }) {
+  const total = count.attending;
   return (
     <>
+      {/* 순위는 참석으로 응답한 사람만으로 계산한다. 몇 명의 의견인지 먼저 보여 준다. */}
+      <p className="rounded-2xl bg-white px-4 py-3 text-sm">
+        📊 <strong>참석 {count.attending}명 기준</strong>
+        <span className="text-sub">
+          {" "}
+          · 불참 {count.absent} · 무응답 {count.noResponse}
+        </span>
+      </p>
       {mode !== "place" && (
         <section className="rounded-2xl bg-white p-4">
           <h2 className="mb-2 text-sm font-bold">📅 날짜 순위</h2>
           {dateRanks.length === 0 && <p className="text-sm text-sub">날짜 후보가 없어요.</p>}
           {noCommon && (
             <div className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-              <p className="font-semibold">모두 되는 날짜가 아직 없어요.</p>
+              <p className="font-semibold">참석자 모두 되는 날짜가 아직 없어요.</p>
               {noCommon.map((d) => (
                 <p key={d.label}>
                   {d.label}: {d.cannot.join(", ")} 안 됨
