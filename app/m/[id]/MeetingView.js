@@ -96,7 +96,7 @@ export default async function MeetingView({ params, searchParams }) {
       )}
 
       <Participation meetingId={id} participants={people} closed={closed} />
-      {isAdmin && <AdminPanel meetingId={id} adminToken={meeting.admin_token} participants={people} closed={closed} />}
+      {isAdmin && <AdminPanel meetingId={id} meetingTitle={meeting.title} adminToken={meeting.admin_token} participants={people} closed={closed} />}
 
       {canSeeRanks ? (
         <>

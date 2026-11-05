@@ -2,19 +2,14 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { addParticipant, closeNow, removeParticipant, resetParticipant } from "@/app/actions";
-import { useCopy, ManualCopy } from "./useCopy";
+import ShareActions from "./ShareActions";
 
 // 모임장에게만 보이는 메뉴. 모임장 링크 보관, 참여자 추가·빼기, 이름 잠금 풀기.
-export default function AdminPanel({ meetingId, adminToken, participants, closed }) {
-  const { copy, copied, manual, close } = useCopy();
+export default function AdminPanel({ meetingId, meetingTitle, adminToken, participants, closed }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState(null);
   const claimed = participants.filter((p) => p.claimed);
   const [added, addAction, adding] = useActionState(addParticipant.bind(null, meetingId), null);
-
-  function copyAdminLink() {
-    copy(`${window.location.origin}/m/${meetingId}/admin?t=${adminToken}`);
-  }
 
   function closeEarly() {
     if (!window.confirm("지금 투표를 마감할까요? 마감하면 더 이상 투표·수정할 수 없고 결과가 확정돼요.")) return;
@@ -45,12 +40,20 @@ export default function AdminPanel({ meetingId, adminToken, participants, closed
     <section className="rounded-2xl border border-dashed border-brand/40 bg-white p-4">
       <h2 className="text-sm font-bold">👑 모임장 메뉴</h2>
       <p className="mt-1 text-xs text-sub">
-        이 기기는 모임장으로 기억돼 있어요. 다른 폰에서도 관리하려면 모임장 링크를 보관해 두세요. (단톡방에는 올리지 마세요)
+        이 기기는 모임장으로 기억돼 있어요. 기록이 지워지거나 다른 폰에서 관리할 때를 위해 모임장 링크를 보관해 두세요. 카톡 공유 창에서
+        &lsquo;나와의 채팅&rsquo;을 고르면 나에게만 보내져요. (단톡방에는 올리지 마세요)
       </p>
-      <button onClick={copyAdminLink} className="mt-2 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold">
-        {copied ? "복사됨" : "모임장 링크 복사"}
-      </button>
-      <ManualCopy text={manual} onClose={close} />
+      <div className="mt-2">
+        <ShareActions
+          path={`/m/${meetingId}/admin?t=${adminToken}`}
+          kakaoLabel="모임장 링크를 카톡 '나와의 채팅'에 보내기"
+          kakaoText={`👑 ${meetingTitle} 모임장 링크\n이 링크로 들어가면 어느 기기에서든 모임장으로 관리할 수 있어요. 단톡방에는 올리지 마세요.`}
+          buttonTitle="모임장으로 열기"
+          copyLabel="🔗 모임장 링크 복사"
+          copyText={(url) => url}
+          nativeTitle="모임픽 모임장 링크"
+        />
+      </div>
 
       {!closed && (
         <div className="mt-4">
