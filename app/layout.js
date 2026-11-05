@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import TopBar, { TopBarFallback } from "@/components/TopBar";
 
 export const metadata = {
+  // 미리보기 이미지 주소를 배포 주소 기준으로 만든다 (카톡이 이미지를 가져갈 수 있게)
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://moimpick.vercel.app"),
   title: "모임픽",
   description: "링크 하나로 날짜와 장소를 함께 정하는 약속 조율 서비스",
   openGraph: {
