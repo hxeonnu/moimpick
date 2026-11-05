@@ -9,7 +9,6 @@ import { formatDeadline, timeLeft } from "@/lib/format";
 import ShareBox from "@/components/ShareBox";
 import NamePicker from "@/components/NamePicker";
 import VoteForm from "@/components/VoteForm";
-import AddCandidate from "@/components/AddCandidate";
 import Participation from "@/components/Participation";
 import Results from "@/components/Results";
 import FinalResult from "@/components/FinalResult";
@@ -69,6 +68,8 @@ export default async function MeetingView({ params, searchParams }) {
         meetingId={id}
         mode={meeting.mode}
         round={meeting.round}
+        // 재투표는 동점이었던 후보로만 하므로 후보 추가를 막는다.
+        canAddCandidate={meeting.round === 1}
         budget={me.budget}
         voted={Boolean(me.voted_at)}
         absent={me.absent}
@@ -87,8 +88,6 @@ export default async function MeetingView({ params, searchParams }) {
             isNew: isNewForMe(c),
           }))}
       />
-      {/* 재투표는 동점이었던 후보로만 하므로 후보 추가를 막는다. */}
-      {meeting.round === 1 && <AddCandidate meetingId={id} mode={meeting.mode} />}
     </>
   );
   const ranks = canSeeRanks ? (

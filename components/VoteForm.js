@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { setAbsent, submitVote } from "@/app/actions";
 import PlaceInfo from "./PlaceInfo";
+import AddCandidate from "./AddCandidate";
 import { Toast } from "./Feedback";
 
 const PREFS = [
@@ -30,35 +31,60 @@ export default function VoteForm(props) {
     });
   }
 
-  if (choice === "attend") return <Ballot {...props} onAbsent={goAbsent} absentPending={pending} />;
+  // 날짜·장소 후보 추가는 참석/불참을 고른 뒤에 보여 준다 (먼저 보이면 투표보다 추가를 먼저 누르게 됨)
+  const add = choice && props.canAddCandidate ? <AddCandidate meetingId={meetingId} mode={props.mode} /> : null;
+
+  if (choice === "attend") {
+    return (
+      <>
+        <Ballot {...props} onAbsent={goAbsent} absentPending={pending} />
+        {add}
+      </>
+    );
+  }
 
   return (
-    <section className="rounded-2xl bg-white p-4">
-      {choice === "absent" ? (
-        <>
-          <p className="font-bold">🙅 불참으로 표시했어요</p>
-          <p className="mt-1 text-sm text-sub">순위 계산에서 빠져요. 마감 전까지 언제든 바꿀 수 있어요.</p>
-          <button onClick={() => setChoice("attend")} className="mt-3 w-full rounded-xl border border-line py-2.5 text-sm font-semibold">
-            참석으로 바꾸기
-          </button>
-        </>
-      ) : (
-        <>
-          <p className="font-bold">이번 모임 참석할 수 있나요?</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {/* 둘 다 같은 모양: 한쪽만 색이 있으면 이미 골라진 것처럼 보여서 (실제로는 눌러야 다음으로 넘어감) */}
-            <button onClick={() => setChoice("attend")} className="rounded-xl border border-line py-3 font-semibold hover:border-brand">
-              ✅ 참석할래요
+    <>
+      <section className="rounded-2xl bg-white p-4">
+        {choice === "absent" ? (
+          <>
+            <p className="font-bold">🙅 불참으로 표시했어요</p>
+            <p className="mt-1 text-sm text-sub">순위 계산에서 빠져요. 마감 전까지 언제든 바꿀 수 있어요.</p>
+            <button
+              onClick={() => setChoice("attend")}
+              className="mt-3 w-full rounded-xl border border-line py-2.5 text-sm font-semibold"
+            >
+              참석으로 바꾸기
             </button>
-            <button onClick={goAbsent} disabled={pending} className="rounded-xl border border-line py-3 font-semibold hover:border-brand disabled:opacity-60">
-              {pending ? "저장하는 중…" : "🙅 이번엔 불참"}
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-sub">가고 싶은데 날짜만 안 맞으면 &lsquo;참석&rsquo;을 누르고 되는 날짜를 비워 두세요.</p>
-        </>
-      )}
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-    </section>
+          </>
+        ) : (
+          <>
+            <p className="font-bold">이번 모임 참석할 수 있나요?</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {/* 둘 다 같은 모양: 한쪽만 색이 있으면 이미 골라진 것처럼 보여서 (실제로는 눌러야 다음으로 넘어감) */}
+              <button
+                onClick={() => setChoice("attend")}
+                className="rounded-xl border border-line py-3 font-semibold hover:border-brand"
+              >
+                ✅ 참석할래요
+              </button>
+              <button
+                onClick={goAbsent}
+                disabled={pending}
+                className="rounded-xl border border-line py-3 font-semibold hover:border-brand disabled:opacity-60"
+              >
+                {pending ? "저장하는 중…" : "🙅 이번엔 불참"}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-sub">
+              가고 싶은데 날짜만 안 맞으면 &lsquo;참석&rsquo;을 누르고 되는 날짜를 비워 두세요.
+            </p>
+          </>
+        )}
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      </section>
+      {add}
+    </>
   );
 }
 
@@ -84,12 +110,22 @@ function Ballot({ meetingId, mode, round, dates, places, budget, voted, absent, 
       )}
       {(fixedDate || fixedPlace) && (
         <div className="rounded-lg bg-canvas px-3 py-2 text-sm">
-          {fixedDate && <p>📅 날짜는 <strong>{fixedDate.label}</strong>(으)로 정해졌어요.</p>}
-          {fixedPlace && <p>📍 장소는 <strong>{fixedPlace.label}</strong>(으)로 정해졌어요.</p>}
+          {fixedDate && (
+            <p>
+              📅 날짜는 <strong>{fixedDate.label}</strong>(으)로 정해졌어요.
+            </p>
+          )}
+          {fixedPlace && (
+            <p>
+              📍 장소는 <strong>{fixedPlace.label}</strong>(으)로 정해졌어요.
+            </p>
+          )}
         </div>
       )}
       {hasNew && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">새 후보가 추가됐어요. 확인하고 다시 저장해 주세요.</p>
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          새 후보가 추가됐어요. 확인하고 다시 저장해 주세요.
+        </p>
       )}
 
       {mode !== "place" && !fixedDate && (
@@ -100,7 +136,10 @@ function Ballot({ meetingId, mode, round, dates, places, budget, voted, absent, 
           {dates.length === 0 && <p className="mt-2 text-sm text-sub">아직 날짜 후보가 없어요. 아래에서 추가해 주세요.</p>}
           <div className="mt-2 space-y-1.5">
             {dates.map((d) => (
-              <label key={d.id} className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line px-3 py-2.5 has-checked:border-brand has-checked:bg-brand-soft">
+              <label
+                key={d.id}
+                className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line px-3 py-2.5 has-checked:border-brand has-checked:bg-brand-soft"
+              >
                 <input type="hidden" name="shown" value={d.id} />
                 <input type="checkbox" name={`d_${d.id}`} defaultChecked={d.mine === "yes"} className="size-4 accent-brand" />
                 <span className="text-[15px]">{d.label}</span>
@@ -131,7 +170,13 @@ function Ballot({ meetingId, mode, round, dates, places, budget, voted, absent, 
                       key={value}
                       className="cursor-pointer rounded-lg border border-line py-1.5 text-center text-sm text-sub has-checked:border-brand has-checked:bg-brand has-checked:font-semibold has-checked:text-white"
                     >
-                      <input type="radio" name={`p_${p.id}`} value={value} defaultChecked={(p.mine || "neutral") === value} className="sr-only" />
+                      <input
+                        type="radio"
+                        name={`p_${p.id}`}
+                        value={value}
+                        defaultChecked={(p.mine || "neutral") === value}
+                        className="sr-only"
+                      />
                       {text}
                     </label>
                   ))}
