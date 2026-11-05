@@ -3,6 +3,7 @@ import { loadMeetingSummaries } from "@/lib/db";
 import { getOwnerId, kakaoLoginEnabled, readMyCookies } from "@/lib/session";
 import { logoutOwner } from "@/app/actions";
 import MeetingRow from "./MeetingRow";
+import KakaoPrivacyNote from "./KakaoPrivacyNote";
 
 // "내가 만든 모임" 화면. 가입 없이 이 기기의 모임장 쿠키(mpa_모임id)로 찾고,
 // 카카오로 연결했다면 그 계정에 묶인 모임도 합친다. (쿠키가 지워지거나 다른 폰이어도 카카오 로그인만 하면 찾을 수 있음)
@@ -50,6 +51,7 @@ export default async function MyMeetings({ searchParams }) {
         ) : (
           <p className="text-sub">이 기기에서 만든 모임만 보여요. 다른 기기에서는 모임장 링크로 들어가면 여기에도 보여요.</p>
         )}
+        {kakaoOn && <KakaoPrivacyNote className="mt-3 border-t border-line pt-2" />}
       </section>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { addParticipant, closeNow, removeParticipant, resetParticipant } from "@/app/actions";
 import ShareActions from "./ShareActions";
+import KakaoPrivacyNote from "./KakaoPrivacyNote";
 
 // 모임장에게만 보이는 메뉴. 모임장 링크 보관, 참여자 추가·빼기, 이름 잠금 풀기.
 export default function AdminPanel({ meetingId, meetingTitle, kakao, adminToken, participants, closed }) {
@@ -141,11 +142,14 @@ function KakaoLink({ meetingId, kakao }) {
   if (kakao === "mine") return <p className="mt-2 text-xs font-semibold text-emerald-700">✅ 내 카카오 계정에 연결된 모임이에요</p>;
   if (kakao === "other") return null;
   return (
-    <a
-      href={`/auth/kakao?next=/m/${meetingId}`}
-      className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-line py-2 text-xs font-semibold"
-    >
-      🔗 카카오로 이 모임 연결 (다른 기기에서도 관리)
-    </a>
+    <>
+      <a
+        href={`/auth/kakao?next=/m/${meetingId}`}
+        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-line py-2 text-xs font-semibold"
+      >
+        🔗 카카오로 이 모임 연결 (다른 기기에서도 관리)
+      </a>
+      <KakaoPrivacyNote className="mt-1" />
+    </>
   );
 }
