@@ -46,10 +46,11 @@ export default function VoteForm(props) {
         <>
           <p className="font-bold">이번 모임 참석할 수 있나요?</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <button onClick={() => setChoice("attend")} className="rounded-xl bg-brand py-3 font-semibold text-white">
+            {/* 둘 다 같은 모양: 한쪽만 색이 있으면 이미 골라진 것처럼 보여서 (실제로는 눌러야 다음으로 넘어감) */}
+            <button onClick={() => setChoice("attend")} className="rounded-xl border border-line py-3 font-semibold hover:border-brand">
               ✅ 참석할래요
             </button>
-            <button onClick={goAbsent} disabled={pending} className="rounded-xl border border-line py-3 font-semibold disabled:opacity-60">
+            <button onClick={goAbsent} disabled={pending} className="rounded-xl border border-line py-3 font-semibold hover:border-brand disabled:opacity-60">
               {pending ? "저장하는 중…" : "🙅 이번엔 불참"}
             </button>
           </div>
