@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -35,7 +36,13 @@ export default async function MeetingView({ params, searchParams }) {
   const isOwner = Boolean(ownerId) && meeting.owner_kakao_id === ownerId;
   const isAdmin = store.get(`mpa_${id}`)?.value === meeting.admin_token || isOwner;
   // 화면(클라이언트)에는 이름·투표 여부·잠김 여부만 보낸다. (예산은 순위 계산에만 서버에서 쓴다)
-  const people = participants.map(({ id, name, voted_at, absent, claimed }) => ({ id, name, voted_at, absent, claimed }));
+  const people = participants.map(({ id, name, voted_at, absent, claimed }) => ({
+    id,
+    name,
+    voted_at,
+    absent,
+    claimed,
+  }));
   const count = headcount(participants);
 
   const now = new Date();
@@ -50,8 +57,61 @@ export default async function MeetingView({ params, searchParams }) {
   const myAnswers = Object.fromEntries(
     responses.filter((r) => r.participant_id === me?.id).map((r) => [r.candidate_id, r.value]),
   );
-  const isNewForMe = (c) =>
-    Boolean(me?.voted_at) && !myAnswers[c.id] && new Date(c.created_at) > new Date(me.voted_at);
+  const isNewForMe = (c) => Boolean(me?.voted_at) && !myAnswers[c.id] && new Date(c.created_at) > new Date(me.voted_at);
+
+  const voting = closed ? (
+    <FinalResult meeting={meeting} dateRanks={dateRanks} placeRanks={placeRanks} count={count} isAdmin={isAdmin} />
+  ) : !me ? (
+    <NamePicker meetingId={id} title={meeting.title} participants={people} />
+  ) : (
+    <>
+      <VoteForm
+        meetingId={id}
+        mode={meeting.mode}
+        round={meeting.round}
+        budget={me.budget}
+        voted={Boolean(me.voted_at)}
+        absent={me.absent}
+        dates={candidates
+          .filter((c) => c.kind === "date")
+          .map((c) => ({
+            ...c,
+            mine: myAnswers[c.id] || null,
+            isNew: isNewForMe(c),
+          }))}
+        places={candidates
+          .filter((c) => c.kind === "place")
+          .map((c) => ({
+            ...c,
+            mine: myAnswers[c.id] || null,
+            isNew: isNewForMe(c),
+          }))}
+      />
+      {/* 재투표는 동점이었던 후보로만 하므로 후보 추가를 막는다. */}
+      {meeting.round === 1 && <AddCandidate meetingId={id} mode={meeting.mode} />}
+    </>
+  );
+  const ranks = canSeeRanks ? (
+    <>
+      <Results
+        mode={meeting.mode}
+        dateRanks={dateRanks}
+        placeRanks={placeRanks}
+        noCommon={noCommonDate(dateRanks, participants)}
+        count={count}
+        closed={closed}
+      />
+      {!closed && <AutoRefresh seconds={5} />}
+    </>
+  ) : (
+    <>
+      <p className="rounded-2xl bg-white p-4 text-center text-sm text-sub">🔒 투표하면 지금 순위를 볼 수 있어요</p>
+      {/* AI 요약이 만들어지는 중이면 투표 전이라도 화면을 새로 받아서 요약이 뜨게 한다. */}
+      {summarizing && <AutoRefresh seconds={4} />}
+    </>
+  );
+  const participation = <Participation meetingId={id} participants={people} closed={closed} />;
+  const resultsFirst = !closed && Boolean(me?.voted_at);
 
   return (
     <div className="space-y-4">
@@ -66,39 +126,30 @@ export default async function MeetingView({ params, searchParams }) {
           {me && !closed && (
             <>
               {" · "}
-              <strong className="text-ink">{me.name}</strong>(으)로 투표 중 · 내 번호 <strong className="text-ink">{me.pin}</strong>{" "}
-              <LeaveButton meetingId={id} pin={me.pin} />
+              <strong className="text-ink">{me.name}</strong>(으)로 투표 중 · 내 번호{" "}
+              <strong className="text-ink">{me.pin}</strong> <LeaveButton meetingId={id} pin={me.pin} />
             </>
           )}
         </div>
       </header>
 
       {/* 마감 뒤에는 투표 링크 대신 아래 확정 결과에서 결과를 공유한다. */}
-      {!closed && <ShareBox meetingId={id} title={meeting.title} deadline={formatDeadline(meeting.deadline)} highlight={sp?.new === "1"} />}
+      {!closed && (
+        <ShareBox meetingId={id} title={meeting.title} deadline={formatDeadline(meeting.deadline)} highlight={sp?.new === "1"} />
+      )}
       {me && !closed && sp?.welcome === "1" && <PinNotice pin={me.pin} />}
 
-      {closed ? (
-        <FinalResult meeting={meeting} dateRanks={dateRanks} placeRanks={placeRanks} count={count} isAdmin={isAdmin} />
-      ) : !me ? (
-        <NamePicker meetingId={id} title={meeting.title} participants={people} />
-      ) : (
-        <>
-          <VoteForm
-            meetingId={id}
-            mode={meeting.mode}
-            round={meeting.round}
-            budget={me.budget}
-            voted={Boolean(me.voted_at)}
-            absent={me.absent}
-            dates={candidates.filter((c) => c.kind === "date").map((c) => ({ ...c, mine: myAnswers[c.id] || null, isNew: isNewForMe(c) }))}
-            places={candidates.filter((c) => c.kind === "place").map((c) => ({ ...c, mine: myAnswers[c.id] || null, isNew: isNewForMe(c) }))}
-          />
-          {/* 재투표는 동점이었던 후보로만 하므로 후보 추가를 막는다. */}
-          {meeting.round === 1 && <AddCandidate meetingId={id} mode={meeting.mode} />}
-        </>
-      )}
-
-      <Participation meetingId={id} participants={people} closed={closed} />
+      {/* 순서: 마감 후엔 확정 결과 → 순위, 이미 투표한 사람은 순위를 먼저(다시 들어오는 이유가 대부분 결과 확인), 아직이면 투표 먼저.
+          모임장 메뉴는 접어서 맨 아래에 둔다. */}
+      {/* key를 이름으로 줘서, 순서가 바뀌어도 투표 칸이 새로 만들어지지 않게 한다 (저장 알림 유지) */}
+      {(closed
+        ? ["voting", "ranks", "participation"]
+        : resultsFirst
+          ? ["ranks", "voting", "participation"]
+          : ["voting", "participation", "ranks"]
+      ).map((name) => (
+        <Fragment key={name}>{{ voting, ranks, participation }[name]}</Fragment>
+      ))}
       {isAdmin && (
         <AdminPanel
           meetingId={id}
@@ -108,26 +159,6 @@ export default async function MeetingView({ params, searchParams }) {
           participants={people}
           closed={closed}
         />
-      )}
-
-      {canSeeRanks ? (
-        <>
-          <Results
-            mode={meeting.mode}
-            dateRanks={dateRanks}
-            placeRanks={placeRanks}
-            noCommon={noCommonDate(dateRanks, participants)}
-            count={count}
-            closed={closed}
-          />
-          {!closed && <AutoRefresh seconds={5} />}
-        </>
-      ) : (
-        <>
-          <p className="rounded-2xl bg-white p-4 text-center text-sm text-sub">🔒 투표하면 지금 순위를 볼 수 있어요</p>
-          {/* AI 요약이 만들어지는 중이면 투표 전이라도 화면을 새로 받아서 요약이 뜨게 한다. */}
-          {summarizing && <AutoRefresh seconds={4} />}
-        </>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import MyMeetings from "@/components/MyMeetings";
+import { Skeleton } from "@/components/Feedback";
 
 export const metadata = { title: "내가 만든 모임 · 모임픽" };
 
@@ -8,7 +9,7 @@ export default function MinePage({ searchParams }) {
   return (
     <>
       <h1 className="mb-4 text-xl font-bold">👑 내가 만든 모임</h1>
-      <Suspense fallback={<p className="py-10 text-center text-sub">불러오는 중…</p>}>
+      <Suspense fallback={<Skeleton blocks={[200, 110]} />}>
         <MyMeetings searchParams={searchParams} />
       </Suspense>
     </>

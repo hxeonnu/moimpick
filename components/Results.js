@@ -72,9 +72,9 @@ export default function Results({ mode, dateRanks, placeRanks, noCommon, count, 
                   </p>
                 </div>
                 {p.overBudget > 0 ? (
-                  <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-600">{p.overBudget}명 예산 초과</span>
+                  <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-600">{p.overBudget}명 예산 초과</span>
                 ) : p.candidate.price_min ? (
-                  <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">예산 OK</span>
+                  <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold text-emerald-700">예산 OK</span>
                 ) : null}
                 <span className="w-8 shrink-0 text-right font-bold">{p.score > 0 ? `+${p.score}` : p.score}</span>
               </li>

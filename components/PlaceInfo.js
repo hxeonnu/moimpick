@@ -29,9 +29,9 @@ function AiSummary({ place }) {
       {s.oneLine && <p className="text-[13px] text-ink">{s.oneLine}</p>}
       {hours && <p className="text-sub">영업 {hours}</p>}
       {s.branchUnsure && <p className="text-amber-700">같은 이름의 다른 지점 정보가 섞였을 수 있어요.</p>}
-      <p className="mt-1 text-[11px] text-sub">ⓘ 가격·영업시간이 최신이 아닐 수 있어요. 링크에서 확인해 주세요.</p>
+      <p className="mt-1 text-xs text-sub">ⓘ 가격·영업시간이 최신이 아닐 수 있어요. 링크에서 확인해 주세요.</p>
       <details className="mt-1">
-        <summary className="cursor-pointer text-[11px] text-sub">자세히</summary>
+        <summary className="cursor-pointer py-1 text-xs text-sub">자세히</summary>
         <div className="mt-1 space-y-1 text-sub">
           {s.address && <p>주소 {s.address}</p>}
           {s.review && <p>후기 {s.review}</p>}
@@ -42,7 +42,9 @@ function AiSummary({ place }) {
 }
 
 // 지도 버튼: 각 지도 앱 아이콘을 붙인다. (public/icons)
-const mapButton = "flex items-center gap-1 rounded-full bg-canvas py-0.5 pl-1 pr-2 text-sub";
+// 휴대폰에서 손가락으로 누르기 쉽게 높이 36px. 좁은 순위 칸(compact)에서는 아이콘만 둥글게.
+const mapButton = "flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full bg-canvas pl-2 pr-3 text-sub";
+const mapIconButton = "grid size-9 place-items-center rounded-full bg-canvas";
 
 // 장소 후보의 이름·설명·가격·지도 링크. 투표 화면과 결과 화면이 같이 쓴다.
 export default function PlaceInfo({ place, compact = false }) {
@@ -57,14 +59,14 @@ export default function PlaceInfo({ place, compact = false }) {
         {place.region && <span className="ml-1 text-xs font-normal text-sub">{place.region}</span>}
       </p>
       {/* 휴대폰에서 이름이 좁아지지 않게 지도 버튼은 이름 아래 줄에 둔다. */}
-      <div className="mt-1 flex gap-1 text-[11px]">
-        <a href={links.kakao} target="_blank" rel="noreferrer" className={mapButton}>
-          <Image src="/icons/kakao-map.png" alt="" width={16} height={16} unoptimized />
-          카카오맵
+      <div className="mt-1.5 flex gap-1.5 text-xs">
+        <a href={links.kakao} target="_blank" rel="noreferrer" className={compact ? mapIconButton : mapButton} aria-label="카카오맵">
+          <Image src="/icons/kakao-map.png" alt="" width={18} height={18} unoptimized />
+          {!compact && "카카오맵"}
         </a>
-        <a href={links.naver} target="_blank" rel="noreferrer" className={mapButton}>
-          <Image src="/icons/naver-map.png" alt="" width={16} height={16} unoptimized />
-          네이버지도
+        <a href={links.naver} target="_blank" rel="noreferrer" className={compact ? mapIconButton : mapButton} aria-label="네이버지도">
+          <Image src="/icons/naver-map.png" alt="" width={18} height={18} unoptimized />
+          {!compact && "네이버지도"}
         </a>
       </div>
       {!compact && (

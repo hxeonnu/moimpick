@@ -23,25 +23,53 @@ export default async function HomeSections() {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl bg-white p-4">
-        <h2 className="text-sm font-bold">🗳 진행 중인 모임</h2>
-        {list.length ? (
-          <ul className="mt-1 divide-y divide-line">
-            {list.map((m) => (
-              <MeetingRow key={m.id} m={m} now={now} />
+      {/* 처음 온 사람(이 기기에 모임이 하나도 없음)에게는 빈 목록 대신 쓰는 방법을 보여 준다. */}
+      {!list.length && !mine.length && !joinedList.length ? (
+        <section className="rounded-2xl bg-white p-4">
+          <h2 className="text-sm font-bold">처음이신가요? 이렇게 써요</h2>
+          <ol className="mt-3 space-y-3">
+            {[
+              ["새 모임 만들기", "모임 이름, 마감 시간, 명단, 날짜·장소 후보를 적어요."],
+              ["단톡방에 링크 올리기", "친구들은 링크를 눌러 자기 이름을 고르고 투표해요. 가입은 없어요."],
+              ["마감되면 결과 확정", "가장 많이 된 날짜와 장소로 정해지고, 카톡으로 바로 공지해요."],
+            ].map(([title, desc], i) => (
+              <li key={title} className="flex gap-3">
+                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand text-xs font-bold text-white">
+                  {i + 1}
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold">{title}</span>
+                  <span className="text-xs text-sub">{desc}</span>
+                </span>
+              </li>
             ))}
-          </ul>
-        ) : (
-          <p className="mt-2 text-sm text-sub">진행 중인 모임이 없어요. 단톡방에 올라온 링크로 들어가거나 새 모임을 만들어 보세요.</p>
-        )}
-      </section>
+          </ol>
+        </section>
+      ) : (
+        <section className="rounded-2xl bg-white p-4">
+          <h2 className="text-sm font-bold">🗳 진행 중인 모임</h2>
+          {list.length ? (
+            <ul className="mt-1 divide-y divide-line">
+              {list.map((m) => (
+                <MeetingRow key={m.id} m={m} now={now} />
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-sub">
+              진행 중인 모임이 없어요. 단톡방에 올라온 링크로 들어가거나 새 모임을 만들어 보세요.
+            </p>
+          )}
+        </section>
+      )}
 
       <Link href="/mine" className="flex items-center justify-between rounded-2xl bg-white p-4">
         <span>
           <span className="flex items-center gap-1.5 font-bold">
             👑 내가 만든 모임
             {ownerId && (
-              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">✅ 카카오에 연결됨</span>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                ✅ 카카오에 연결됨
+              </span>
             )}
           </span>
           <span className="text-xs text-sub">

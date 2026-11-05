@@ -16,3 +16,13 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
 }
+
+/* 잠깐 떴다 사라지는 알림 (저장했어요 등). key가 바뀔 때마다 다시 재생된다. */
+@keyframes toast {
+  0% { opacity: 0; transform: translate(-50%, 8px); }
+  10%, 85% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, 8px); visibility: hidden; }
+}
+.toast {
+  animation: toast 2.6s ease forwards;
+}

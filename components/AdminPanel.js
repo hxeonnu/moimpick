@@ -38,8 +38,15 @@ export default function AdminPanel({ meetingId, meetingTitle, kakao, adminToken,
   }
 
   return (
-    <section className="rounded-2xl border border-dashed border-brand/40 bg-white p-4">
-      <h2 className="text-sm font-bold">👑 모임장 메뉴</h2>
+    // 기능이 많아 화면을 크게 차지해서 평소엔 접어 둔다.
+    <details className="group rounded-2xl border border-dashed border-brand/40 bg-white p-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-bold">
+        <span>👑 모임장 메뉴</span>
+        <span className="text-xs font-normal text-sub">
+          <span className="group-open:hidden">링크 보관 · 마감 · 명단 관리 ▾</span>
+          <span className="hidden group-open:inline">접기 ▴</span>
+        </span>
+      </summary>
       <p className="mt-1 text-xs text-sub">
         이 기기는 모임장으로 기억돼 있어요. 기록이 지워지거나 다른 폰에서 관리할 때를 위해 모임장 링크를 보관해 두세요. 카톡 공유 창에서
         &lsquo;나와의 채팅&rsquo;을 고르면 나에게만 보내져요. (단톡방에는 올리지 마세요)
@@ -132,7 +139,7 @@ export default function AdminPanel({ meetingId, meetingTitle, kakao, adminToken,
         </div>
       )}
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-    </section>
+    </details>
   );
 }
 

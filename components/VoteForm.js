@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { setAbsent, submitVote } from "@/app/actions";
 import PlaceInfo from "./PlaceInfo";
+import { Toast } from "./Feedback";
 
 const PREFS = [
   ["good", "좋음"],
@@ -11,7 +12,7 @@ const PREFS = [
 ];
 
 function NewBadge() {
-  return <span className="ml-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-600">NEW</span>;
+  return <span className="ml-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-600">NEW</span>;
 }
 
 // 이름을 고르면 먼저 참석 여부를 묻는다. 불참이면 투표 칸 없이 계산에서 빠지고, 마감 전까지 바꿀 수 있다.
@@ -157,7 +158,8 @@ function Ballot({ meetingId, mode, round, dates, places, budget, voted, absent, 
       )}
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
-      {state?.ok && <p className="text-sm text-brand-ink">저장했어요. 마감 전까지 언제든 고칠 수 있어요.</p>}
+      {state?.ok && <Toast key={state.at}>✅ 투표를 저장했어요</Toast>}
+      {state?.ok && <p className="text-xs text-sub">마감 전까지 언제든 고칠 수 있어요.</p>}
 
       <button disabled={pending} className="w-full rounded-xl bg-brand py-3 font-semibold text-white disabled:opacity-60">
         {pending ? "저장하는 중…" : voted && !absent ? "내 투표 수정하기" : "투표하고 순위 보기"}
