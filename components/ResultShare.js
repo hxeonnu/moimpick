@@ -2,75 +2,31 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { pickFinal, revote } from "@/app/actions";
-import { useCopy, ManualCopy } from "./useCopy";
+import ShareActions from "./ShareActions";
 
-// 카카오톡 공유 SDK. 카카오 앱의 JavaScript 키가 있고, 사이트 주소가 카카오에 등록돼 있어야 동작한다.
-// 키가 없거나 SDK를 못 불러오면 문구 복사로 대신한다.
-const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
-const KAKAO_SDK = "https://t1.kakaocdn.net/kakao_js_sdk/2.8.4/kakao.min.js";
-const KAKAO_SDK_HASH = "sha384-BGX7Wb16GmRFagri4bLJV2DgipVZaU2AI812GZtHtHzzDQJnfHasDXN5houxv45w";
-
-function loadKakao() {
-  if (window.Kakao) return Promise.resolve(window.Kakao);
-  return new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = KAKAO_SDK;
-    s.integrity = KAKAO_SDK_HASH;
-    s.crossOrigin = "anonymous";
-    s.onload = () => resolve(window.Kakao);
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
-}
-
-// 확정 결과 공지: 카카오톡 공유 / 문구 복사 / 캘린더에 추가
+// 확정 결과 공지: 카카오톡 공유 크게, 결과 문구 복사·다른 앱·캘린더 작게
 export function ResultShare({ meetingId, lines, canCalendar, isAdmin, tie }) {
-  const { copy, copied, manual, close } = useCopy();
-  const [error, setError] = useState(null);
-
-  const url = () => `${window.location.origin}/m/${meetingId}`;
-  const message = () => [...lines, `👉 결과 보기: ${url()}`].join("\n");
-
-  async function shareKakao() {
-    setError(null);
-    if (!KAKAO_KEY) return copy(message());
-    try {
-      const Kakao = await loadKakao();
-      if (!Kakao.isInitialized()) Kakao.init(KAKAO_KEY);
-      Kakao.Share.sendDefault({
-        objectType: "text",
-        text: lines.join("\n").slice(0, 200),
-        link: { mobileWebUrl: url(), webUrl: url() },
-        buttonTitle: "결과 보기",
-      });
-    } catch {
-      setError("카카오톡 공유를 열지 못했어요. 문구를 복사해서 올려 주세요.");
-      copy(message());
-    }
-  }
-
+  const small = "flex-1 rounded-xl border border-line bg-white py-2 text-center text-xs font-semibold";
   return (
     <div className="mt-4 space-y-2 text-left">
       {isAdmin && <p className="text-center text-xs font-semibold text-brand-ink">👑 단톡방에 결과를 알려 주세요</p>}
-      <button onClick={shareKakao} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#FEE500] py-3 font-semibold text-[#191919]">
-        💬 {tie ? "동점 결과 그대로 카카오톡 공유" : "카카오톡으로 결과 공유"}
-      </button>
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => copy(message())} className="rounded-xl border border-line bg-white py-2.5 text-sm font-semibold">
-          {copied ? "복사됨" : "📋 결과 문구 복사"}
-        </button>
+      <ShareActions
+        path={`/m/${meetingId}`}
+        kakaoLabel={tie ? "동점 결과 그대로 카카오톡 공유" : "카카오톡으로 결과 공유"}
+        kakaoText={lines.join("\n")}
+        buttonTitle="결과 보기"
+        copyLabel="📋 문구 복사"
+        copyText={(url) => [...lines, `👉 결과 보기: ${url}`].join("\n")}
+        nativeTitle={lines[0]}
+      >
         {canCalendar ? (
-          <a href={`/m/${meetingId}/calendar`} className="rounded-xl border border-line bg-white py-2.5 text-center text-sm font-semibold">
-            🗓 캘린더에 추가
+          <a href={`/m/${meetingId}/calendar`} className={small}>
+            🗓 캘린더
           </a>
         ) : (
-          <span className="rounded-xl border border-dashed border-line px-1 py-2.5 text-center text-xs text-sub">
-            {tie ? "캘린더: 날짜가 정해지면 추가돼요" : "캘린더: 날짜 형식이 아니에요"}
-          </span>
+          <span className={`${small} border-dashed font-normal text-sub`}>{tie ? "🗓 날짜 확정 후" : "🗓 날짜 형식 아님"}</span>
         )}
-      </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      <ManualCopy text={manual} onClose={close} />
+      </ShareActions>
     </div>
   );
 }

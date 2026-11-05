@@ -70,7 +70,8 @@ export default async function MeetingView({ params, searchParams }) {
         </div>
       </header>
 
-      <ShareBox meetingId={id} title={meeting.title} highlight={sp?.new === "1"} />
+      {/* 마감 뒤에는 투표 링크 대신 아래 확정 결과에서 결과를 공유한다. */}
+      {!closed && <ShareBox meetingId={id} title={meeting.title} deadline={formatDeadline(meeting.deadline)} highlight={sp?.new === "1"} />}
       {me && !closed && sp?.welcome === "1" && <PinNotice pin={me.pin} />}
 
       {closed ? (
@@ -105,6 +106,7 @@ export default async function MeetingView({ params, searchParams }) {
             placeRanks={placeRanks}
             noCommon={noCommonDate(dateRanks, participants)}
             count={count}
+            closed={closed}
           />
           {!closed && <AutoRefresh seconds={5} />}
         </>

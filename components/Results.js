@@ -8,7 +8,7 @@ function Rank({ n }) {
   );
 }
 
-export default function Results({ mode, dateRanks, placeRanks, noCommon, count }) {
+export default function Results({ mode, dateRanks, placeRanks, noCommon, count, closed }) {
   const total = count.attending;
   return (
     <>
@@ -82,7 +82,7 @@ export default function Results({ mode, dateRanks, placeRanks, noCommon, count }
           </ul>
         </section>
       )}
-      <p className="text-center text-xs text-sub">마감되면 날짜 1위와 장소 1위가 약속으로 확정돼요</p>
+      {!closed && <p className="text-center text-xs text-sub">마감되면 날짜 1위와 장소 1위가 약속으로 확정돼요</p>}
     </>
   );
 }
